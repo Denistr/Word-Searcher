@@ -3,15 +3,16 @@ package com.istratenko.searcher.indexer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import com.google.gson.reflect.TypeToken;
 import com.istratenko.searcher.tokenizer.Positions;
 import com.istratenko.searcher.tokenizer.WordItem;
 import com.mongodb.*;
 import com.mongodb.util.JSON;
-import org.json.JSONObject;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.net.UnknownHostException;
 import java.util.*;
 
@@ -94,7 +95,10 @@ public class MongoDbWorker {
             while (dbCursor.hasNext()) {
                 String json=null;
                 JSON js = new JSON();
-                gson.fromJson(js.serialize(dbCursor.next()), ArrayList.class); //TODO:не работает!
+                Type collectionType = new TypeToken<List<Positions>>(){}.getType();
+                Collection<Positions> enums = gson.fromJson(js.serialize(dbCursor.next()), collectionType);
+
+                //ArrayList a = gson.fromJson(), ArrayList.class); //TODO:не работает!
                 //dbCursor.next().get(word);
                 //wordItems.add(gson.fromJson(json.serialize(dbCursor.next()), WordItem.class));
                 //wordItems.add(gson.fromJson(json.serialize(dbCursor.next()), WordItem.class));
