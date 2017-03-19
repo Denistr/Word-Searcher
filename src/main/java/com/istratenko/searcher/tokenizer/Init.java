@@ -24,12 +24,11 @@ public class Init {
         WordSearcher s = new WordSearcher();
 
         try {
-            s.printWordsFromText(args[0]);
+            //s.printWordsFromText(args[0]);
             List<WordItem> words = s.getWordsFromFile(args[0]);
             Map<String, List<Positions>> content = s.getAllPositionOfWord(words);
             mdb.addIndex(content);
             mdb.getIndex(words.get(0).getWord());
-            //System.out.println(mdb.getIndex(word.getKey()));
 
         } catch (Exception e) {
             e.printStackTrace();

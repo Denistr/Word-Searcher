@@ -1,5 +1,7 @@
 package com.istratenko.searcher.indexer;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -73,39 +75,33 @@ public class MongoDbWorker {
 
     //TODO: мапа не хранит повторяющиеся значения. составлять ArrayList Positions
     public void addIndex(Map<String, List<Positions>> words) {
-        Gson gson = new GsonBuilder().create();
-        String json=null;
         for (Map.Entry<String, List<Positions>> word : words.entrySet()){
-            json = gson.toJson(word.getValue());
             BasicDBObject document = new BasicDBObject();
-            document.put(word.getKey(), json);
+            ObjectMapper mapper = new ObjectMapper();
+            DBObject dboJack[] = mapper.convertValue(word.getValue(), BasicDBObject[].class);
+            document.put(word.getKey(), dboJack);
             table.insert(document);
         }
     }
 
-    public List<WordItem> getIndex(String word) {
+    public Map<String, List<Positions>>  getIndex(String word) {
         BasicDBObject query = new BasicDBObject();
-        List<WordItem> wordItems = new ArrayList<>();
+        Map<String, List<Positions>> wordItems = new HashMap<>();
 
         query.put(word, new BasicDBObject("$exists", true));
 
         DBCursor dbCursor = table.find(query);
         if (dbCursor != null) {
-            Gson gson = new GsonBuilder().create();
             while (dbCursor.hasNext()) {
-                String json=null;
-                JSON js = new JSON();
-                Type collectionType = new TypeToken<List<Positions>>(){}.getType();
-                Collection<Positions> enums = gson.fromJson(js.serialize(dbCursor.next()), collectionType);
+                String postitionValues = new JSON().serialize(dbCursor.next().get(word));
 
-                //ArrayList a = gson.fromJson(), ArrayList.class); //TODO:не работает!
-                //dbCursor.next().get(word);
-                //wordItems.add(gson.fromJson(json.serialize(dbCursor.next()), WordItem.class));
-                //wordItems.add(gson.fromJson(json.serialize(dbCursor.next()), WordItem.class));
-                //JSONObject jsonResult = new JSONObject(new JSON().serialize(dbCursor.next().get(word)));
+                try {
+                    List<Positions> positions = new ObjectMapper().readValue(postitionValues, new TypeReference<ArrayList<Positions>>() { });
+                    wordItems.put(word,positions);
 
-                //jsonResult.get(word);
-                //String loudScreaming = jsonResult.getJSONObject(word).toString();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
         return wordItems;

@@ -8,7 +8,7 @@ import java.io.Serializable;
 /**
  * Created by denis on 19.03.17.
  */
-public class Positions implements Serializable{
+public class Positions implements Serializable {
 
     private String document;
     private Integer startSymbol;
@@ -16,15 +16,15 @@ public class Positions implements Serializable{
     private Integer numberOfLine;
 
 
-    public Positions(){
+    public Positions() {
 
     }
 
-    public Positions(String document, int numberOfLine, int startSymbol, int endSymbol){
-        this.startSymbol=startSymbol;
-        this.endSymbol=endSymbol;
-        this.numberOfLine=numberOfLine;
-        this.document=document;
+    public Positions(String document, int numberOfLine, int startSymbol, int endSymbol) {
+        this.startSymbol = startSymbol;
+        this.endSymbol = endSymbol;
+        this.numberOfLine = numberOfLine;
+        this.document = document;
     }
 
     public Integer getStartSymbol() {
