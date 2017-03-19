@@ -1,4 +1,4 @@
-package com.searcher.wordsearcher.istratenko;
+package com.istratenko.searcher.tokenizer;
 
 /**
  * Created by denis on 16.03.17.
