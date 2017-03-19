@@ -1,19 +1,22 @@
 package com.istratenko.searcher.tokenizer;
 
+import com.mongodb.BasicDBObject;
+
+import java.io.Serializable;
+
 /**
  * Created by denis on 16.03.17.
  */
-public class WordItem {
+public class WordItem extends BasicDBObject {
     private String word;
-    private int line;
-    private int startSymbol;
-    private int endSymbol;
+    private Positions positions;
 
-    public WordItem(String word, int line, int startSymbol, int endSymbol){
+    public WordItem(){
+
+    }
+    public WordItem(String word, Positions positions){
         this.word=word;
-        this.line=line;
-        this.startSymbol=startSymbol;
-        this.endSymbol=endSymbol;
+        this.positions=positions;
     }
 
     public String getWord() {
@@ -24,27 +27,11 @@ public class WordItem {
         this.word = word;
     }
 
-    public int getLine() {
-        return line;
+    public Positions getPositions() {
+        return positions;
     }
 
-    public void setLine(int line) {
-        this.line = line;
-    }
-
-    public int getStartSymbol() {
-        return startSymbol;
-    }
-
-    public void setStartSymbol(int startSymbol) {
-        this.startSymbol = startSymbol;
-    }
-
-    public int getEndSymbol() {
-        return endSymbol;
-    }
-
-    public void setEndSymbol(int endSymbol) {
-        this.endSymbol = endSymbol;
+    public void setPositions(Positions positions) {
+        this.positions = positions;
     }
 }
