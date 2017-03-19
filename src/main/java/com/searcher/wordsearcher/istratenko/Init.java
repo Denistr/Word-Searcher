@@ -7,7 +7,7 @@ public class Init {
     public static void main(String[] args) {
 
         if (args.length != 1) {
-            System.out.println("Set only one parameter on input");
+            System.out.println("Set one parameter on input");
             return;
         }
 
