@@ -1,20 +1,15 @@
-package com.istratenko.searcher.indexer;
+package com.istratenko.searcher;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
-import com.google.gson.reflect.TypeToken;
-import com.istratenko.searcher.tokenizer.Positions;
-import com.istratenko.searcher.tokenizer.WordItem;
+import com.istratenko.searcher.entity.Positions;
 import com.mongodb.*;
 import com.mongodb.util.JSON;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Type;
 import java.net.UnknownHostException;
 import java.util.*;
 
@@ -23,6 +18,8 @@ import java.util.*;
  */
 
 public class MongoDbWorker {
+    private static volatile MongoDbWorker instance;
+
     // это клиент который обеспечит подключение к БД
     private MongoClient mongoClient;
 
@@ -40,7 +37,24 @@ public class MongoDbWorker {
     Properties prop = new Properties();
     InputStream input = null;
 
-    public MongoDbWorker(String pathToConfigFile) {
+    public MongoDbWorker() {
+
+    }
+
+    public static MongoDbWorker getInstance() {
+        MongoDbWorker localInstance = instance;
+        if (localInstance == null) {
+            synchronized (MongoDbWorker.class) {
+                localInstance = instance;
+                if (localInstance == null) {
+                    instance = localInstance = new MongoDbWorker();
+                }
+            }
+        }
+        return localInstance;
+    }
+
+    public void initConnection(String pathToConfigFile){
         try {
             input = new FileInputStream(pathToConfigFile);
             prop.load(input);
@@ -72,36 +86,36 @@ public class MongoDbWorker {
         }
     }
 
-
-    //TODO: мапа не хранит повторяющиеся значения. составлять ArrayList Positions
     public void addIndex(Map<String, List<Positions>> words) {
-        for (Map.Entry<String, List<Positions>> word : words.entrySet()){
-            BasicDBObject document = new BasicDBObject();
+        for (Map.Entry<String, List<Positions>> word : words.entrySet()) {
             ObjectMapper mapper = new ObjectMapper();
             DBObject dboJack[] = mapper.convertValue(word.getValue(), BasicDBObject[].class);
-            document.put(word.getKey(), dboJack);
-            table.insert(document);
+
+            BasicDBObject positionOfWord=new BasicDBObject("$each", dboJack);
+            DBObject listItem = new BasicDBObject("$addToSet", new BasicDBObject(word.getKey(), positionOfWord)); //for each new array element make addToSet
+
+            BasicDBObject findQuery = new BasicDBObject();
+            findQuery.put(word.getKey(), new BasicDBObject("$exists", true)); //if element exists, then retirn its
+            table.update(findQuery, listItem, true, false); //upsert=true (make merge), multi=false
         }
     }
 
-    public Map<String, List<Positions>>  getIndex(String word) {
-        BasicDBObject query = new BasicDBObject();
+    public Map<String, List<Positions>> getIndex(String word) {
         Map<String, List<Positions>> wordItems = new HashMap<>();
-
+        BasicDBObject query = new BasicDBObject();
         query.put(word, new BasicDBObject("$exists", true));
 
-        DBCursor dbCursor = table.find(query);
-        if (dbCursor != null) {
-            while (dbCursor.hasNext()) {
-                String postitionValues = new JSON().serialize(dbCursor.next().get(word));
+        DBObject object = table.findOne(query);
 
-                try {
-                    List<Positions> positions = new ObjectMapper().readValue(postitionValues, new TypeReference<ArrayList<Positions>>() { });
-                    wordItems.put(word,positions);
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+        if (object != null) {
+            String postitionValues = new JSON().serialize(object.get(word));
+            List<Positions> positions;
+            try {
+                positions = new ObjectMapper().readValue(postitionValues, new TypeReference<ArrayList<Positions>>() {
+                });
+                wordItems.put(word, positions);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
         return wordItems;

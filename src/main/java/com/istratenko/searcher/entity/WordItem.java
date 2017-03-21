@@ -1,8 +1,6 @@
-package com.istratenko.searcher.tokenizer;
+package com.istratenko.searcher.entity;
 
 import com.mongodb.BasicDBObject;
-
-import java.io.Serializable;
 
 /**
  * Created by denis on 16.03.17.
