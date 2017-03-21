@@ -41,11 +41,18 @@ public class Init {
             Map<String, List<Positions>> content = s.getAllPositionOfWord(words);
             mdb.addIndex(content);
 
-            //Map<String, List<Positions>> findedDocuments = searcher.getPositionsInDocByQuery(mdb, new Scanner(System.in).nextLine());
-            //:TODO добиться вывода позиций слова по документу чтобы один раз документ, а после него - все позиции
-            List<Positions> findedDocuments = searcher.getPositionsInDocByQuery(mdb, new Scanner(System.in).nextLine());
-            for (Positions position : findedDocuments) {
-                    System.out.println(position.getDocument()+ position.getLine()+position.getStart()+ position.getEnd());
+            Map<String, List<Positions>> findedDocuments = searcher.getPositionOfWordsByDocuments(mdb, new Scanner(System.in).nextLine());
+            for (Map.Entry position : findedDocuments.entrySet()) {
+                List<Positions> allPositions = (List<Positions>)position.getValue();
+                boolean firstStep=true;
+                for (Positions p: allPositions) {
+                    if (firstStep) {
+                        System.out.println(p.getDocument() +"\n" +p.getLine() +", "+ p.getStart()  +", "+ p.getEnd());
+                        firstStep=false;
+                    } else {
+                        System.out.println(p.getLine() +", "+ p.getStart()  +", "+ p.getEnd());
+                    }
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
