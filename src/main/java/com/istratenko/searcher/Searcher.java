@@ -13,9 +13,9 @@ import java.util.*;
  */
 public class Searcher {
 
-    private List<Positions> searchDocuments(final MongoDbWorker mdb, String queryWords) throws IOException {
-        List<Positions> currentSet;
-        List<Positions> resultSet = new ArrayList<>();
+    private Set<Positions> searchDocuments(final MongoDbWorker mdb, String queryWords) throws IOException {
+        Set<Positions> currentSet;
+        Set<Positions> resultSet = new HashSet<>();
         WordSearcher wordSearcher = new WordSearcher();
         List<String> lines = new ArrayList<>(Arrays.asList(queryWords.split(System.getProperty("line.separator"))));
         List<WordItem> wordsFromQuery = wordSearcher.getWordsFromFile(null, lines);
@@ -26,7 +26,7 @@ public class Searcher {
                 if (firstStep) {
                     resultSet.addAll(word.get(wi.getWord())); //при первом прохождении сохраняем информацию о нем, как финальный набор
                 }
-                currentSet = new ArrayList<>(word.get(wi.getWord()));
+                currentSet = new HashSet<>(word.get(wi.getWord()));
                 //делаем объединение текущего слова и финальной коллекции. При первом прохождении должен вернуть ту же самую коллекцию.
                 //При втором- объединение первой и второй
                 if (!firstStep) {
@@ -39,9 +39,8 @@ public class Searcher {
     }
 
 
-    private List<Positions> intersection(List<Positions> a, List<Positions> b) {
-        Set<Positions> canAdd = new HashSet<>(a);
-        List<Positions> result = new ArrayList<>();
+    private Set<Positions> intersection(Set<Positions> a, Set<Positions> b) {
+        Set<Positions> result = new HashSet<>();
         for (Positions n : a) {
             for (Positions nn : b) {
                 if (n.getDocument().equals(nn.getDocument())) {
@@ -52,14 +51,13 @@ public class Searcher {
                 }
             }
         }
-
         return result;
     }
 
 
     public Map<String, List<Positions>> getPositionInDocument(final MongoDbWorker mdb, String queryWords) throws IOException {
         Map<String, List<Positions>> documents = new HashMap<>();
-        List<Positions> positions = searchDocuments(mdb, queryWords);
+        Set<Positions> positions = searchDocuments(mdb, queryWords);
         for (Positions p : positions) {
             if (documents.get(p.getDocument()) == null) {
                 List<Positions> pp = new ArrayList<Positions>();
