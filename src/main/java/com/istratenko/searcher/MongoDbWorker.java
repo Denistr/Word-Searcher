@@ -60,7 +60,9 @@ public class MongoDbWorker {
             prop.load(input);
 
             // Создаем подключение
-            mongoClient = new MongoClient(prop.getProperty("host"), Integer.valueOf(prop.getProperty("port")));
+            if (mongoClient==null) {
+                mongoClient = new MongoClient(prop.getProperty("host"), Integer.valueOf(prop.getProperty("port")));
+            }
 
             // Выбираем БД для дальнейшей работы
             db = mongoClient.getDB(prop.getProperty("dbname"));

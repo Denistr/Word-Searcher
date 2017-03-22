@@ -3,15 +3,16 @@ package com.istratenko.searcher;
 import com.istratenko.searcher.entity.Positions;
 import com.istratenko.searcher.entity.WordItem;
 import com.istratenko.searcher.tokenizer.WordSearcher;
-import javafx.geometry.Pos;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
 
 /**
@@ -19,29 +20,58 @@ import java.util.Scanner;
  */
 public class Init {
     private static final MongoDbWorker mdb = MongoDbWorker.getInstance();
+    InputStream input = null;
+    private static Properties configProp = new Properties();
 
     public static void main(String[] args) {
-        List<String> lines = null;
-        Searcher searcher = new Searcher();
-        //args[0] - path to Text File
-        //args[1] - path to config.properties for Mongo db connection
-
-        //читаю файл
-        //индексирую его
-        //ввожу в консоль текст
-
-        String pathToTextFile = args[0];
         try {
+            new Init().init(args[0]);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void init(String pathToConfigProp) throws IOException {
+        input = new FileInputStream(pathToConfigProp); //path to config.properties
+        configProp.load(input);
+        String mode= configProp.getProperty("mode").toLowerCase();
+        List<String> lines = null;
+
+        if (mode.equals("1") || mode.equals("tokenizer")){
+            String pathToTextFile = configProp.getProperty("pathToFile");
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
-            //s.printWordsFromText(pathToTextFile, lines);
-            mdb.initConnection(args[1]);
-            System.out.println(mdb.isAuthenticate());
+            s.printWordsFromText(pathToTextFile, lines);
+        }
+
+        if (mode.equals("2") || mode.equals("indexer")){
+            String pathToTextFile = configProp.getProperty("pathToFile");
+            String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
+            mdb.initConnection(pathToMDBConf);
+            if (mdb.isAuthenticate()){
+                System.out.println("Connection is ok");
+            } else {
+                System.out.println("Connection refused");
+            }
+            lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
+            WordSearcher s = new WordSearcher();
             List<WordItem> words = s.getWordsFromFile(pathToTextFile, lines);
             Map<String, List<Positions>> content = s.getAllPositionOfWord(words);
             mdb.addIndex(content);
+        }
 
-            Map<String, List<Positions>> findedDocuments = searcher.getPositionOfWordsByDocuments(mdb, new Scanner(System.in).nextLine());
+        if (mode.equals("3") || mode.equals("WordSearcher")){
+            String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
+            mdb.initConnection(pathToMDBConf);
+            if (mdb.isAuthenticate()){
+                System.out.println("Connection is ok");
+            } else {
+                System.out.println("Connection refused");
+            }
+            Searcher searcher = new Searcher();
+            System.out.println("Enter your search query:");
+            String query = new Scanner(System.in).nextLine();
+            Map<String, List<Positions>> findedDocuments = searcher.getPositionInDocument(mdb, query);
             for (Map.Entry position : findedDocuments.entrySet()) {
                 List<Positions> allPositions = (List<Positions>)position.getValue();
                 boolean firstStep=true;
@@ -54,21 +84,19 @@ public class Init {
                     }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
 
-
-        /*
-        try {
-            //s.printWordsFromText(args[0]);
-            List<WordItem> words = s.getWordsFromFile(pathToTextFile, lines);
-            Map<String, List<Positions>> content = s.getAllPositionOfWord(words);
-            mdb.addIndex(content);
-            //mdb.getIndex(words.get(0).getWord());
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
+        if (mode.equals("4") || mode.equals("WordSearcher")){
+            String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
+            mdb.initConnection(pathToMDBConf);
+            if (mdb.isAuthenticate()){
+                System.out.println("Connection is ok");
+            } else {
+                System.out.println("Connection refused");
+            }
+            Searcher searcher = new Searcher();
+            System.out.println("Enter your search query:");
+            String query = new Scanner(System.in).nextLine();
+        }
     }
 }
