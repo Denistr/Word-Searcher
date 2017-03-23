@@ -1,7 +1,7 @@
 package com.istratenko.searcher;
 
 import com.istratenko.searcher.entity.Positions;
-import com.istratenko.searcher.entity.WordItem;
+import com.istratenko.searcher.entity.Word;
 import com.istratenko.searcher.tokenizer.WordSearcher;
 
 import java.io.FileInputStream;
@@ -35,16 +35,7 @@ public class Init {
         String mode = configProp.getProperty("mode").toLowerCase();
         List<String> lines = null;
 
-        /*
-                BufferedReader reader = new BufferedReader(new FileReader("<путь к файду>"));
-        String line;
-        List<String> lines = new ArrayList<String>();
-        while ((line = reader.readLine()) != null) {
-            lines.add(line);
-        }
-        //если нужен массив то список можно запросто преобрпзовать
-        String [] linesAsArray = lines.toArray(new String[lines.size()]);
-         */
+        //TODO:приводить все слова к нижнему регистру при записи в базу
         if (mode.equals("1") || mode.equals("tokenizer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
@@ -63,7 +54,7 @@ public class Init {
             }
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
-            List<WordItem> words = s.getWordsFromFile(pathToTextFile, lines);
+            List<Word> words = s.getWords(pathToTextFile, lines);
             Map<String, List<Positions>> content = s.getAllPositionOfWord(words);
             mdb.addIndex(content);
         }
@@ -105,6 +96,7 @@ public class Init {
             Searcher searcher = new Searcher();
             System.out.println("Enter your search query:");
             String query = new Scanner(System.in).nextLine();
+            searcher.getSublineInDoc(mdb, query);
         }
     }
 }

@@ -64,8 +64,8 @@ public class Positions implements Serializable {
 
         Positions positions = (Positions) o;
 
-        if (!document.equals(positions.document)) return false;
-        if (!line.equals(positions.line)) return false;
+        if (document != null ? !document.equals(positions.document) : positions.document != null) return false;
+        //if (!line.equals(positions.line)) return false;
         if (!start.equals(positions.start)) return false;
         return end.equals(positions.end);
 
@@ -73,8 +73,8 @@ public class Positions implements Serializable {
 
     @Override
     public int hashCode() {
-        int result = document.hashCode();
-        result = 31 * result + line.hashCode();
+        int result = document != null ? document.hashCode() : 0;
+        //result = 31 * result + line.hashCode();
         result = 31 * result + start.hashCode();
         result = 31 * result + end.hashCode();
         return result;
