@@ -13,9 +13,9 @@ import java.util.*;
  */
 public class Searcher {
 
-    private Set<Positions> searchDocuments(final MongoDbWorker mdb, String queryWords) throws IOException {
-        Set<Positions> currentSet;
-        Set<Positions> resultSet = new HashSet<>();
+    private List<Positions> searchDocuments(final MongoDbWorker mdb, String queryWords) throws IOException {
+        List<Positions> currentList;
+        List<Positions> resultList = new ArrayList<>();
         WordSearcher wordSearcher = new WordSearcher();
         List<String> lines = new ArrayList<>(Arrays.asList(queryWords.split(System.getProperty("line.separator"))));
         List<WordItem> wordsFromQuery = wordSearcher.getWordsFromFile(null, lines);
@@ -24,24 +24,24 @@ public class Searcher {
             Map<String, List<Positions>> word = mdb.getIndex(wi.getWord()); //для каждого слова получаем инфомрацию из БД
             if (!word.isEmpty()) {
                 if (firstStep) {
-                    resultSet.addAll(word.get(wi.getWord())); //при первом прохождении сохраняем информацию о нем, как финальный набор
+                    resultList.addAll(word.get(wi.getWord())); //при первом прохождении сохраняем информацию о нем, как финальный набор
                 }
-                currentSet = new HashSet<>(word.get(wi.getWord()));
+                currentList = new ArrayList<>(word.get(wi.getWord()));
                 //делаем объединение текущего слова и финальной коллекции. При первом прохождении должен вернуть ту же самую коллекцию.
                 //При втором- объединение первой и второй
                 if (!firstStep) {
-                    resultSet = intersection(currentSet, resultSet);
+                    resultList = (List<Positions>)intersection(currentList, resultList);
                 }
                 firstStep = false;
             }
         }
-        return resultSet; //возвращает набор позиций
+        return resultList; //возвращает набор позиций
     }
 
-
-    private Set<Positions> intersection(Set<Positions> a, Set<Positions> b) {
-        Set<Positions> result = new HashSet<>();
-        for (Positions n : a) {
+    //TODO:проверить еще раз комбинациями 3-4 слова. Не работает!!! (когда одного из слов нету в базе - все равно выводит. А должен ли??)
+    private Collection<Positions> intersection(Collection<Positions> a, Collection<Positions> b) {
+        Collection<Positions> result = new ArrayList<>();
+        for (Positions n : a) { //проходим по первой коллекции
             for (Positions nn : b) {
                 if (n.getDocument().equals(nn.getDocument())) {
                     result.add(nn);
@@ -57,18 +57,19 @@ public class Searcher {
 
     public Map<String, List<Positions>> getPositionInDocument(final MongoDbWorker mdb, String queryWords) throws IOException {
         Map<String, List<Positions>> documents = new HashMap<>();
-        Set<Positions> positions = searchDocuments(mdb, queryWords);
+        List<Positions> positions = searchDocuments(mdb, queryWords);
         for (Positions p : positions) {
             if (documents.get(p.getDocument()) == null) {
-                List<Positions> pp = new ArrayList<Positions>();
+                List<Positions> pp = new ArrayList<>();
                 pp.add(p);
                 documents.put(p.getDocument(), pp);
             } else {
-                List<Positions> pp = new ArrayList<Positions>(documents.get(p.getDocument()));
+                List<Positions> pp = new ArrayList<>(documents.get(p.getDocument()));
                 pp.add(p);
                 documents.put(p.getDocument(), pp);
             }
         }
         return documents;
     }
+
 }

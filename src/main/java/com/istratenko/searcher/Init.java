@@ -10,10 +10,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * Created by denis on 16.03.17.
@@ -31,24 +28,35 @@ public class Init {
         }
     }
 
+    //TODO:сделать защиту, если путь до файла не будет указан. Чтоб не получитьNPE
     private void init(String pathToConfigProp) throws IOException {
         input = new FileInputStream(pathToConfigProp); //path to config.properties
         configProp.load(input);
-        String mode= configProp.getProperty("mode").toLowerCase();
+        String mode = configProp.getProperty("mode").toLowerCase();
         List<String> lines = null;
 
-        if (mode.equals("1") || mode.equals("tokenizer")){
+        /*
+                BufferedReader reader = new BufferedReader(new FileReader("<путь к файду>"));
+        String line;
+        List<String> lines = new ArrayList<String>();
+        while ((line = reader.readLine()) != null) {
+            lines.add(line);
+        }
+        //если нужен массив то список можно запросто преобрпзовать
+        String [] linesAsArray = lines.toArray(new String[lines.size()]);
+         */
+        if (mode.equals("1") || mode.equals("tokenizer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
             s.printWordsFromText(pathToTextFile, lines);
         }
 
-        if (mode.equals("2") || mode.equals("indexer")){
+        if (mode.equals("2") || mode.equals("indexer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
             mdb.initConnection(pathToMDBConf);
-            if (mdb.isAuthenticate()){
+            if (mdb.isAuthenticate()) {
                 System.out.println("Connection is ok");
             } else {
                 System.out.println("Connection refused");
@@ -60,10 +68,10 @@ public class Init {
             mdb.addIndex(content);
         }
 
-        if (mode.equals("3") || mode.equals("WordSearcher")){
+        if (mode.equals("3") || mode.equals("WordSearcher")) {
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
             mdb.initConnection(pathToMDBConf);
-            if (mdb.isAuthenticate()){
+            if (mdb.isAuthenticate()) {
                 System.out.println("Connection is ok");
             } else {
                 System.out.println("Connection refused");
@@ -73,23 +81,23 @@ public class Init {
             String query = new Scanner(System.in).nextLine();
             Map<String, List<Positions>> findedDocuments = searcher.getPositionInDocument(mdb, query);
             for (Map.Entry position : findedDocuments.entrySet()) {
-                List<Positions> allPositions = (List<Positions>)position.getValue();
-                boolean firstStep=true;
-                for (Positions p: allPositions) {
+                List<Positions> allPositions = (List<Positions>) position.getValue();
+                boolean firstStep = true;
+                for (Positions p : allPositions) {
                     if (firstStep) {
-                        System.out.println(p.getDocument() +"\n" +p.getLine() +", "+ p.getStart()  +", "+ p.getEnd());
-                        firstStep=false;
+                        System.out.println(p.getDocument() + "\n" + p.getLine() + ", " + p.getStart() + ", " + p.getEnd());
+                        firstStep = false;
                     } else {
-                        System.out.println(p.getLine() +", "+ p.getStart()  +", "+ p.getEnd());
+                        System.out.println(p.getLine() + ", " + p.getStart() + ", " + p.getEnd());
                     }
                 }
             }
         }
 
-        if (mode.equals("4") || mode.equals("WordSearcher")){
+        if (mode.equals("4") || mode.equals("WordSearcher")) {
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
             mdb.initConnection(pathToMDBConf);
-            if (mdb.isAuthenticate()){
+            if (mdb.isAuthenticate()) {
                 System.out.println("Connection is ok");
             } else {
                 System.out.println("Connection refused");
