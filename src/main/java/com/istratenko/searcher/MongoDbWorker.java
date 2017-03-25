@@ -54,13 +54,13 @@ public class MongoDbWorker {
         return localInstance;
     }
 
-    public void initConnection(String pathToConfigFile){
+    public void initConnection(String pathToConfigFile) {
         try {
             input = new FileInputStream(pathToConfigFile);
             prop.load(input);
 
             // Создаем подключение
-            if (mongoClient==null) {
+            if (mongoClient == null) {
                 mongoClient = new MongoClient(prop.getProperty("host"), Integer.valueOf(prop.getProperty("port")));
             }
 
@@ -93,7 +93,7 @@ public class MongoDbWorker {
             ObjectMapper mapper = new ObjectMapper();
             DBObject dboJack[] = mapper.convertValue(word.getValue(), BasicDBObject[].class);
 
-            BasicDBObject positionOfWord=new BasicDBObject("$each", dboJack);
+            BasicDBObject positionOfWord = new BasicDBObject("$each", dboJack);
             DBObject listItem = new BasicDBObject("$addToSet", new BasicDBObject(word.getKey(), positionOfWord)); //for each new array element make addToSet
 
             BasicDBObject findQuery = new BasicDBObject();
@@ -121,6 +121,28 @@ public class MongoDbWorker {
             }
         }
         return wordItems;
+    }
+
+    public Map<String, List<Positions>> getAllWords() throws IOException {
+        Map<String, List<Positions>> allWords = new HashMap<>();
+        Map<String, List<Positions>> finalMap = new HashMap<>();
+        DBCursor cursor = table.find();
+        while (cursor.hasNext()) {
+            allWords.putAll(cursor.next().toMap());
+
+        }
+
+        if (allWords.containsKey("_id")) {
+            allWords.remove("_id");
+        }
+
+        for (Map.Entry m : allWords.entrySet()) {
+            String postitionValues = new JSON().serialize(m.getValue());
+            List<Positions> positions = new ObjectMapper().readValue(postitionValues, new TypeReference<ArrayList<Positions>>() {
+            });
+            finalMap.put((String)m.getKey(), positions);
+        }
+        return finalMap;
     }
 
     public boolean isAuthenticate() {

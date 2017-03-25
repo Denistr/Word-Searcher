@@ -1,13 +1,16 @@
 package com.istratenko.searcher.entity;
 
 
+import com.mongodb.BasicDBObject;
+
 import java.io.Serializable;
+import java.util.Comparator;
 import java.util.Objects;
 
 /**
  * Created by denis on 19.03.17.
  */
-public class Positions implements Serializable {
+public class Positions  implements Serializable, Comparable<Positions> {
 
     private String document;
     private Integer line;
@@ -78,5 +81,34 @@ public class Positions implements Serializable {
         result = 31 * result + start.hashCode();
         result = 31 * result + end.hashCode();
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Positions{" +
+                "document='" + document + '\'' +
+                ", line=" + line +
+                ", start=" + start +
+                ", end=" + end +
+                '}';
+    }
+
+
+    @Override
+    public int compareTo(Positions p) {
+        return Comparators.POSITIONS.compare(this, p);
+    }
+
+    public static class Comparators {
+
+        public static Comparator<Positions> POSITIONS = new Comparator<Positions>() {
+            @Override
+            public int compare(Positions p1, Positions p2) {
+                if (p1.getDocument().compareTo(p2.getDocument())==0){
+                    return p1.getStart().compareTo(p2.getStart());
+                }
+                return p1.getDocument().compareTo(p2.getDocument());
+            }
+        };
     }
 }
