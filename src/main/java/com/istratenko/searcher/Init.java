@@ -106,10 +106,14 @@ public class Init {
             System.out.println("Enter your search query:");
             String query = new Scanner(System.in).nextLine();
             Map<String, Map<String, List<Positions>>> findedDocuments = searcher.getPositionInDocument(mdb, query);
+            if (findedDocuments.isEmpty()){
+                System.out.println("Nothing found on your request");
+            }
             for (Map.Entry position : findedDocuments.entrySet()) {
-                List<Positions> allPositions = (List<Positions>) position.getValue();
+                Map<String, List<Positions>> allPositions = (Map<String, List<Positions>>) position.getValue();
                 boolean firstStep = true;
-                for (Positions p : allPositions) {
+                for (Map.Entry pos : allPositions.entrySet()){
+                    for (Positions p : (List<Positions>)pos.getValue())
                     if (firstStep) {
                         System.out.println(p.getDocument() + "\n" + p.getLine() + ", " + p.getStart() + ", " + p.getEnd());
                         firstStep = false;
