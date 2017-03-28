@@ -5,7 +5,6 @@ import com.istratenko.searcher.entity.Word;
 import com.istratenko.searcher.tokenizer.WordSearcher;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -18,7 +17,7 @@ import java.util.*;
  */
 public class Init {
     private static final MongoDbWorker mdb = MongoDbWorker.getInstance();
-    private static InputStream  input = null;
+    private static InputStream input = null;
     private static Properties configProp = new Properties();
 
     public static void main(String[] args) {
@@ -28,7 +27,7 @@ public class Init {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (input!=null){
+            if (input != null) {
                 try {
                     input.close();
                 } catch (IOException e) {
@@ -89,7 +88,7 @@ public class Init {
             }
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
-            List<Word> words = s.getWords(true, pathToTextFile, lines);
+            List<Word> words = s.getWords(pathToTextFile, lines);
             Map<String, List<Positions>> content = s.getAllPositionOfWord(words);
             mdb.addIndex(content);
         }
@@ -106,20 +105,21 @@ public class Init {
             System.out.println("Enter your search query:");
             String query = new Scanner(System.in).nextLine();
             Map<String, Map<String, List<Positions>>> findedDocuments = searcher.getPositionInDocument(mdb, query);
-            if (findedDocuments.isEmpty()){
+            if (findedDocuments.isEmpty()) {
                 System.out.println("Nothing found on your request");
+                return;
             }
             for (Map.Entry position : findedDocuments.entrySet()) {
                 Map<String, List<Positions>> allPositions = (Map<String, List<Positions>>) position.getValue();
                 boolean firstStep = true;
-                for (Map.Entry pos : allPositions.entrySet()){
-                    for (Positions p : (List<Positions>)pos.getValue())
-                    if (firstStep) {
-                        System.out.println(p.getDocument() + "\n" + p.getLine() + ", " + p.getStart() + ", " + p.getEnd());
-                        firstStep = false;
-                    } else {
-                        System.out.println(p.getLine() + ", " + p.getStart() + ", " + p.getEnd());
-                    }
+                for (Map.Entry pos : allPositions.entrySet()) {
+                    for (Positions p : (List<Positions>) pos.getValue())
+                        if (firstStep) {
+                            System.out.println(p.getDocument() + "\n" + p.getLine() + ", " + p.getStart() + ", " + p.getEnd());
+                            firstStep = false;
+                        } else {
+                            System.out.println(p.getLine() + ", " + p.getStart() + ", " + p.getEnd());
+                        }
                 }
             }
         }
@@ -135,7 +135,21 @@ public class Init {
             Searcher searcher = new Searcher();
             System.out.println("Enter your search query:");
             String query = new Scanner(System.in).nextLine();
-            searcher.getSublineInDoc(mdb, query);
+            System.out.println("Enter context size:");
+            int sizeContext = 0;
+            do {
+                if (sizeContext < 0) {
+                    System.out.println("Context size should be >=0");
+                }
+                String input=new Scanner(System.in).nextLine();
+                if (input!=null && !input.isEmpty()) {
+                    sizeContext = Integer.parseInt(input);
+                } else {
+                    sizeContext=-1;
+                }
+            } while (sizeContext < 0);
+
+            searcher.findQuoteInText(mdb, query, sizeContext);
         }
     }
 }

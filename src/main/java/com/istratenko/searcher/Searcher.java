@@ -4,10 +4,17 @@ import com.istratenko.searcher.entity.CtxWindow;
 import com.istratenko.searcher.entity.Positions;
 import com.istratenko.searcher.entity.Word;
 import com.istratenko.searcher.tokenizer.WordSearcher;
+import com.sun.deploy.util.StringUtils;
 
 
 import java.io.*;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by denis on 21.03.17.
@@ -27,7 +34,7 @@ public class Searcher {
         List<Word> resultList = new ArrayList<>();
         WordSearcher wordSearcher = new WordSearcher();
         List<String> lines = new ArrayList<>(Arrays.asList(queryWords.split(System.getProperty("line.separator"))));
-        List<Word> wordsFromQuery = wordSearcher.getWords(true, null, lines);
+        List<Word> wordsFromQuery = wordSearcher.getWords(null, lines);
         boolean firstStep = true;
         for (Word wi : wordsFromQuery) { //проходим по всем словам в запросе
             Map<String, List<Positions>> word = mdb.getIndex(wi.getWord()); //для каждого слова получаем инфомрацию из БД
@@ -159,9 +166,10 @@ public class Searcher {
      */
     private List<CtxWindow> identifyContextPosition(List<Positions> allWordsInDB, Map<String, List<Positions>> word, int contextWindow) throws IOException {
         List<CtxWindow> contextWindowPos;
-        List<CtxWindow> resultWindow = null;
+        List<CtxWindow> resultWindow;
         List<List<CtxWindow>> commonlist = new ArrayList<>();
         for (Map.Entry position : word.entrySet()) {
+            String currWord = (String) position.getKey();
             contextWindowPos = new ArrayList<>();
             //беру текущее слово, нахожу его в листе всех слов, определяю его индекс в отсортированном списке
 
@@ -174,7 +182,7 @@ public class Searcher {
                 int endI;
 
                 if (currWordPositionInDB - contextWindow <= 0) { //если разность с контекстным окном<=0, то берем первое слово в списке
-                    startI = currWordPositionInDB;
+                    startI = 0;
                 } else {
                     startI = currWordPositionInDB - contextWindow;
                 }
@@ -194,9 +202,11 @@ public class Searcher {
                     }
                 }
 
+
                 int ctxStart = startWordInContext.getStart();
                 int ctxEnd = endWordInContext.getEnd();
                 CtxWindow ctxWindow = new CtxWindow(p.getDocument(), ctxStart, ctxEnd);
+                //CtxWindow ctxWindow = trimmingSentence(p.getDocument(), ctxStart, ctxEnd, currWord);
                 contextWindowPos.add(ctxWindow);
 
 
@@ -209,6 +219,35 @@ public class Searcher {
         resultWindow = ctxAssociation(commonlist);
 
         return resultWindow;
+    }
+
+
+    private CtxWindow trimmingSentence(String document, int start, int end, String word) throws IOException { //этот метод не учитывает N количество пробелов и N
+        // количество знаков припенания между предлложениями->неправильно опеределются позици начала и конца
+        String text = new String(Files.readAllBytes(Paths.get(document)));
+        int newStart = start;
+        int newEnd = end;
+        String sentenceArray[] = text.substring(start, end + 1).split("[!|\\.|\\?]+[\\s]+"); //regexp, который делит контекст на предложения по .?! и пробелам
+        text = null; //чтобы gc очистил память от текста
+        for (int i = 0; i < sentenceArray.length; i++) {
+            if (sentenceArray[i].contains(word)) { //если в найденном предложении содержится слово, то беру его и определяю его новые координаты в тексте
+                if (i == 0) { //если это первое преложение из контекста
+                    newStart = start;
+                    newEnd = start + sentenceArray[i].length() - 1;
+                } else if (i == sentenceArray.length - 1) { //если это последнее предложение в тексте
+                    newStart = end - sentenceArray[i].length() + 1;
+                    newEnd = end;
+                } else { //если это предложение в середине
+                    int summLeng = 0;
+                    for (int j = 0; j < i; j++) { //цикл по всем предложениям до текущего i, чтобы найти их суммарную длину
+                        summLeng += sentenceArray[j].length() + 2;
+                    }
+                    newStart = start + summLeng;
+                    newEnd = newStart + sentenceArray[i].length() - 1; //стартовая позиция найденного фрагмента+длина найденного фрагмента; минус точка и пробел
+                }
+            }
+        }
+        return new CtxWindow(document, newStart, newEnd);
     }
 
     /**
@@ -226,6 +265,7 @@ public class Searcher {
         int predE = 0;
 
         resultContextWindow.addAll(rawContext.get(0)); //добавляем все контексты первого слова в результирующий список
+        CtxWindow ctx = null;
         if (rawContext.size() > 1) {
             for (int i = 1; i < rawContext.size(); i++) { //  ищем пересекающиеся окна начиная со второго слова
                 List<CtxWindow> currCtx = rawContext.get(i);
@@ -243,6 +283,9 @@ public class Searcher {
                             pred.setStart(Math.min(curS, predS)); // расширяем границы окна слова
                             pred.setEnd(Math.max(curE, predE));
                             bPredWorked = true;
+                        } else { //case, когда контексты не пересекаются (разные предложения)
+                            ctx = new CtxWindow(cur.getDocument(), curS, curE);
+                            bPredWorked = true;
                         }
                     }
                     if (!bPredWorked) {
@@ -251,35 +294,146 @@ public class Searcher {
                 }
             }
             resultContextWindow.removeAll(deleteList);
+            if (ctx != null) {
+                resultContextWindow.add(ctx);
+            }
         }
 
         return resultContextWindow;
     }
 
-    public void getSublineInDoc(final MongoDbWorker mdb, String queryWords) throws IOException {
-        List<Word> wordsInText = searchDocuments(mdb, queryWords);
-        WordSearcher wordSearcher = new WordSearcher();
-        List<String> lines = new ArrayList<>(Arrays.asList(queryWords.split(System.getProperty("line.separator")))); //разбиваем запрос на отдельные слова
-        //List<Word> wordsFromQuery = wordSearcher.getWords(true, null, lines);
-        List<Positions> pos = getAllPositions(mdb);
-        for (Positions p : pos) {
-            System.out.println(p.getDocument() + "," + p.getStart() + "\n");
+
+    private Map<String, List<String>> selectWordsInPhrase(Map<String, List<String>> phrases, List<Word> wordsFromQuery) { //уже отсортированных по возрастанию
+        Map<String, List<String>> documentPhrases = new HashMap<>();
+        List<String> resultPhrases = new ArrayList<>();
+        List<String> words = new ArrayList<>();
+        for (Word w : wordsFromQuery) {
+            words.add(w.getWord());
         }
 
-        Map<String, Map<String, List<Positions>>> positionsWordsInDoc = getPositionInDocument(mdb, queryWords);
-        List<Positions> allWordsInDB = getAllPositions(mdb);
-        for (Map.Entry word : positionsWordsInDoc.entrySet()) {
-            List<CtxWindow> p = identifyContextPosition(allWordsInDB, (Map<String, List<Positions>>) word.getValue(), 6);
-            for (CtxWindow pp : p) {
-                System.out.println(pp.getDocument() + ", " + pp.getStart() + ", " + pp.getEnd());
+        String patternString = "\\b(" + StringUtils.join(words, "|") + ")\\b";
+        Pattern pattern = Pattern.compile(patternString);
+
+        for (Map.Entry document : phrases.entrySet()) {
+            List<String> phrase = (List<String>) document.getValue();
+            for (String p : phrase) {
+
+                Matcher matcher = pattern.matcher(p);
+                while (matcher.find()) {
+                    StringBuilder wordWithFormat = new StringBuilder();
+                    wordWithFormat = wordWithFormat.append("<b>").append(matcher.group(1)).append("</b>"); //обрамляем искомое слово тегами
+                    p = p.replace(matcher.group(1), wordWithFormat.toString());
+                }
+                resultPhrases.add(p);
+                documentPhrases.put((String) document.getKey(), resultPhrases);
             }
         }
-        //Set<Word> possiblePhrase = getPossibleQueryPosInText(wordsInText, wordsFromQuery, queryWords); //получаю список фраз с их началами и концами в тексте
-        //теперь имея координаты посибл фраз я ищу в тексте, делаю сабстринг и если фраза та, то я определяю границы предложения
-        //Set<Word> findedPhrase = defineEqualsPhraseInDoc(possiblePhrase);
-        /*List<Phrase> a= getIntersectionPhrase(getPossibleQueryPosInText(wordsInText, wordsFromQuery, queryWords));
-        for (Phrase w : a) {
-            System.out.println(w.getStart() + ", " + w.getEnd());
-        }*/
+        return documentPhrases;
+    }
+
+
+    private Map<String, List<String>> increaseContextBorder(List<CtxWindow> contextList) throws IOException {
+
+
+        //int newStart=0;
+        //int newEnd=0;
+        String text=null;
+        String currDocument=null;
+        Map<String, List<String>> resultMap = new HashMap<>();
+        List<String> phrase =null;
+        for (CtxWindow ctx : contextList) {
+            int newStart=ctx.getStart();
+            int newEnd=ctx.getEnd();
+            int startSent=0;
+            int whitespaces = 0;
+            int endSent = newEnd;
+
+            if (!ctx.getDocument().equals(currDocument)){
+                text = new String(Files.readAllBytes(Paths.get(ctx.getDocument())));
+                phrase = new ArrayList<>();
+                currDocument=ctx.getDocument();
+                resultMap.put(ctx.getDocument(), phrase);
+            }
+
+            for (int i = ctx.getStart(); i >= 0; i--) { //ищем левую границу предложения
+                boolean isUpperLetter = Character.isLetter(text.charAt(i)) && Character.isUpperCase(text.charAt(i));
+                if (isUpperLetter) {
+                    startSent=i;
+                }
+
+                if (Character.isWhitespace(text.charAt(i))) {
+                    whitespaces=i;
+                }
+
+                boolean isEndSent = text.charAt(i)==('.') || text.charAt(i)==('!') ||  text.charAt(i)==('?');
+                if (isEndSent){
+                    endSent=i;
+                }
+
+                if (endSent < whitespaces && whitespaces<startSent){ //если пробел лежит между концом предыдущего и началом текущего
+                    newStart=startSent;
+                    startSent=0;
+                    whitespaces = 0;
+                    endSent = 0;
+                    break;
+                }
+            }
+
+            for (int i = ctx.getEnd(); i <= text.length(); i++) { //ищем правую границу предложения
+                boolean isUpperLetter = Character.isLetter(text.charAt(i)) && Character.isUpperCase(text.charAt(i));
+                if (isUpperLetter) {
+                    startSent=i;
+                }
+
+                if (Character.isWhitespace(text.charAt(i))) {
+                    whitespaces=i;
+                }
+
+                boolean isEndSent = (text.charAt(i)=='.' || text.charAt(i)==('!') || text.charAt(i)==('?'));
+                if (isEndSent){
+                    endSent=i;
+                }
+
+                if ((i==text.length()-1 && isEndSent) || (startSent > whitespaces && whitespaces>endSent)){ //если пробел лежит между концом предыдущего и началом текущего
+                    newEnd=endSent;
+                    phrase.add(text.substring(newStart, newEnd+1));
+                    break;
+                }
+            }
+            if (ctx.getStart().equals(newStart) && ctx.getEnd().equals(newEnd)){ //если позиции равны, то в циклы мы не заходили, то и берем этот кусок
+                phrase.add(text.substring(ctx.getStart(), ctx.getEnd()+1));
+            }
+
+        }
+
+        return resultMap;
+    }
+
+    public void findQuoteInText(final MongoDbWorker mdb, String queryWords, int sizeContext) throws IOException {
+        Map<String, List<String>> documentPhrase = new HashMap<>();
+        List<String> phrases = new ArrayList<>();
+        Map<String, List<String>> finalPhrases;
+        WordSearcher ws = new WordSearcher();
+        List<String> lines = new ArrayList<>(Arrays.asList(queryWords.split(System.getProperty("line.separator"))));
+        List<Word> wordsFromQuery = ws.getWords(null, lines);
+        HTMLController htmlCreator = new HTMLController();
+
+        Map<String, Map<String, List<Positions>>> positionsWordsInDoc = getPositionInDocument(mdb, queryWords);
+        if (positionsWordsInDoc.isEmpty()) {
+            System.out.println("Nothing found on your request");
+            return;
+        }
+        List<Positions> allWordsInDB = getAllPositions(mdb);
+        for (Map.Entry word : positionsWordsInDoc.entrySet()) {
+            List<CtxWindow> phraseiList = identifyContextPosition(allWordsInDB, (Map<String, List<Positions>>) word.getValue(), sizeContext);
+            Collections.sort(phraseiList, CtxWindow.Comparators.DOCUMENTS);
+            for (CtxWindow pp : phraseiList) {
+                System.out.println(pp.getDocument() + ", " + pp.getStart() + ", " + pp.getEnd());
+            }
+            documentPhrase=increaseContextBorder(phraseiList);
+        }
+        finalPhrases = selectWordsInPhrase(documentPhrase, wordsFromQuery);
+        htmlCreator.createHTMLFile(finalPhrases);
+
     }
 }

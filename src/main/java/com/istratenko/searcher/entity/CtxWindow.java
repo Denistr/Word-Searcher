@@ -79,5 +79,17 @@ public class CtxWindow implements Comparable<CtxWindow>{
                 return p1.getStart().compareTo(p2.getStart());
             }
         };
+
+        public static Comparator<CtxWindow> DOCUMENTS = new Comparator<CtxWindow>() {
+            @Override
+            public int compare(CtxWindow p1, CtxWindow p2) {
+                if (p1.getDocument().compareTo(p2.getDocument())==0){
+                    if (p1.getStart().compareTo(p2.getStart())==0) {
+                        return p1.getEnd().compareTo(p2.getEnd());
+                    }
+                }
+                return p1.getDocument().compareTo(p2.getDocument());
+            }
+        };
     }
 }
