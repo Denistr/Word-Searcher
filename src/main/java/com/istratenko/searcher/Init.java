@@ -4,6 +4,7 @@ import com.istratenko.searcher.entity.Positions;
 import com.istratenko.searcher.entity.Word;
 import com.istratenko.searcher.tokenizer.WordSearcher;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,7 +64,6 @@ public class Init {
 */
 
 
-    //TODO:сделать защиту, если путь до файла не будет указан. Чтоб не получитьNPE
     private void init(String pathToConfigProp) throws IOException {
         input = new FileInputStream(pathToConfigProp); //path to config.properties
         configProp.load(input);
@@ -72,6 +72,11 @@ public class Init {
         //TODO:приводить все слова к нижнему регистру при записи в базу
         if (mode.equals("1") || mode.equals("tokenizer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
+            boolean isExistsFile = new File(pathToTextFile).exists();
+            if (!isExistsFile) {
+                System.out.println("File for with path is not found. Che it in config file");
+                return;
+            }
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
             s.printWordsFromText(pathToTextFile, lines);
@@ -80,11 +85,25 @@ public class Init {
         if (mode.equals("2") || mode.equals("indexer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
+
+            boolean isMongoDbConfigFileExists = new File(pathToMDBConf).exists();
+
+            if (!isMongoDbConfigFileExists) {
+                System.out.println("Config file for mongodb is not found. Check it in config file");
+                return;
+            }
             mdb.initConnection(pathToMDBConf);
+
             if (mdb.isAuthenticate()) {
                 System.out.println("Connection is ok");
             } else {
                 System.out.println("Connection refused");
+            }
+
+            boolean isTextFileExists = new File(pathToTextFile).exists();
+            if (!isTextFileExists) {
+                System.out.println("File for with path is not found. Check it in config file");
+                return;
             }
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
@@ -95,6 +114,13 @@ public class Init {
 
         if (mode.equals("3") || mode.equals("WordSearcher")) {
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
+
+            boolean isMongoDbConfigFileExists = new File(pathToMDBConf).exists();
+
+            if (!isMongoDbConfigFileExists) {
+                System.out.println("Config file for mongodb is not found. Check it in config file");
+                return;
+            }
             mdb.initConnection(pathToMDBConf);
             if (mdb.isAuthenticate()) {
                 System.out.println("Connection is ok");
@@ -141,11 +167,11 @@ public class Init {
                 if (sizeContext < 0) {
                     System.out.println("Context size should be >=0");
                 }
-                String input=new Scanner(System.in).nextLine();
-                if (input!=null && !input.isEmpty()) {
+                String input = new Scanner(System.in).nextLine();
+                if (input != null && !input.isEmpty()) {
                     sizeContext = Integer.parseInt(input);
                 } else {
-                    sizeContext=-1;
+                    sizeContext = -1;
                 }
             } while (sizeContext < 0);
 

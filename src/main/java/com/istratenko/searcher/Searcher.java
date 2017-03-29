@@ -8,8 +8,6 @@ import com.sun.deploy.util.StringUtils;
 
 
 import java.io.*;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -283,10 +281,10 @@ public class Searcher {
                             pred.setStart(Math.min(curS, predS)); // расширяем границы окна слова
                             pred.setEnd(Math.max(curE, predE));
                             bPredWorked = true;
-                        } else { //case, когда контексты не пересекаются (разные предложения)
+                        }/* else { //case, когда контексты не пересекаются (разные предложения)
                             ctx = new CtxWindow(cur.getDocument(), curS, curE);
                             bPredWorked = true;
-                        }
+                        }*/
                     }
                     if (!bPredWorked) {
                         deleteList.add(pred);
@@ -294,9 +292,9 @@ public class Searcher {
                 }
             }
             resultContextWindow.removeAll(deleteList);
-            if (ctx != null) {
+            /*if (ctx != null) {
                 resultContextWindow.add(ctx);
-            }
+            }*/
         }
 
         return resultContextWindow;
@@ -305,7 +303,7 @@ public class Searcher {
 
     private Map<String, List<String>> selectWordsInPhrase(Map<String, List<String>> phrases, List<Word> wordsFromQuery) { //уже отсортированных по возрастанию
         Map<String, List<String>> documentPhrases = new HashMap<>();
-        List<String> resultPhrases = new ArrayList<>();
+
         List<String> words = new ArrayList<>();
         for (Word w : wordsFromQuery) {
             words.add(w.getWord());
@@ -315,6 +313,7 @@ public class Searcher {
         Pattern pattern = Pattern.compile(patternString);
 
         for (Map.Entry document : phrases.entrySet()) {
+            List<String> resultPhrases = new ArrayList<>();
             List<String> phrase = (List<String>) document.getValue();
             for (String p : phrase) {
 
@@ -333,70 +332,74 @@ public class Searcher {
 
 
     private Map<String, List<String>> increaseContextBorder(List<CtxWindow> contextList) throws IOException {
-
-
-        //int newStart=0;
-        //int newEnd=0;
-        String text=null;
-        String currDocument=null;
+        String text = null;
+        String currDocument = null;
         Map<String, List<String>> resultMap = new HashMap<>();
-        List<String> phrase =null;
+        List<String> phrase = null;
         for (CtxWindow ctx : contextList) {
-            int newStart=ctx.getStart();
-            int newEnd=ctx.getEnd();
-            int startSent=0;
+            int newStart = ctx.getStart();
+            int newEnd = ctx.getEnd();
+            int startSent = 0;
             int whitespaces = 0;
-            int endSent = newEnd;
+            int endSent = 0;
 
-            if (!ctx.getDocument().equals(currDocument)){
+            if (!ctx.getDocument().equals(currDocument)) {
+
+                boolean isExistsFile = new File(ctx.getDocument()).exists();
+
+                if (!isExistsFile){
+                    System.out.println("File for with path is not found. Che it in config file");
+                    return resultMap;
+                }
+
                 text = new String(Files.readAllBytes(Paths.get(ctx.getDocument())));
                 phrase = new ArrayList<>();
-                currDocument=ctx.getDocument();
+                currDocument = ctx.getDocument();
                 resultMap.put(ctx.getDocument(), phrase);
             }
 
             for (int i = ctx.getStart(); i >= 0; i--) { //ищем левую границу предложения
                 boolean isUpperLetter = Character.isLetter(text.charAt(i)) && Character.isUpperCase(text.charAt(i));
                 if (isUpperLetter) {
-                    startSent=i;
+                    startSent = i;
                 }
 
                 if (Character.isWhitespace(text.charAt(i))) {
-                    whitespaces=i;
+                    whitespaces = i;
                 }
 
-                boolean isEndSent = text.charAt(i)==('.') || text.charAt(i)==('!') ||  text.charAt(i)==('?');
-                if (isEndSent){
-                    endSent=i;
+                boolean isEndSent = text.charAt(i) == ('.') || text.charAt(i) == ('!') || text.charAt(i) == ('?');
+                if (isEndSent) {
+                    endSent = i;
                 }
 
-                if (endSent < whitespaces && whitespaces<startSent){ //если пробел лежит между концом предыдущего и началом текущего
-                    newStart=startSent;
-                    startSent=0;
+                if (endSent!=0 && (endSent < whitespaces && whitespaces < startSent)) { //если пробел лежит между концом предыдущего и началом текущего
+                    newStart = startSent;
+                    startSent = 0;
                     whitespaces = 0;
                     endSent = 0;
                     break;
                 }
             }
 
-            for (int i = ctx.getEnd(); i <= text.length(); i++) { //ищем правую границу предложения
+            for (int i = ctx.getEnd(); i < text.length(); i++) { //ищем правую границу предложения
                 boolean isUpperLetter = Character.isLetter(text.charAt(i)) && Character.isUpperCase(text.charAt(i));
                 if (isUpperLetter) {
-                    startSent=i;
+                    startSent = i;
                 }
 
                 if (Character.isWhitespace(text.charAt(i))) {
-                    whitespaces=i;
+                    whitespaces = i;
                 }
 
-                boolean isEndSent = (text.charAt(i)=='.' || text.charAt(i)==('!') || text.charAt(i)==('?'));
-                if (isEndSent){
-                    endSent=i;
+                boolean isEndSent = (text.charAt(i) == '.' || text.charAt(i) == ('!') || text.charAt(i) == ('?'));
+                if (isEndSent) {
+                    endSent = i;
                 }
 
-                if ((i==text.length()-1 && isEndSent) || (startSent > whitespaces && whitespaces>endSent)){ //если пробел лежит между концом предыдущего и началом текущего
-                    newEnd=endSent;
-                    phrase.add(text.substring(newStart, newEnd+1));
+                if ((i == text.length() - 1 && isEndSent) || ((startSent > whitespaces && whitespaces > endSent) && (endSent!=0))) { //если пробел лежит между концом предыдущего и началом текущего
+                    newEnd = endSent;
+                    phrase.add(text.substring(newStart, newEnd + 1));
                     break;
                 }
             }
@@ -411,7 +414,6 @@ public class Searcher {
 
     public void findQuoteInText(final MongoDbWorker mdb, String queryWords, int sizeContext) throws IOException {
         Map<String, List<String>> documentPhrase = new HashMap<>();
-        List<String> phrases = new ArrayList<>();
         Map<String, List<String>> finalPhrases;
         WordSearcher ws = new WordSearcher();
         List<String> lines = new ArrayList<>(Arrays.asList(queryWords.split(System.getProperty("line.separator"))));
@@ -426,11 +428,15 @@ public class Searcher {
         List<Positions> allWordsInDB = getAllPositions(mdb);
         for (Map.Entry word : positionsWordsInDoc.entrySet()) {
             List<CtxWindow> phraseiList = identifyContextPosition(allWordsInDB, (Map<String, List<Positions>>) word.getValue(), sizeContext);
+            if (phraseiList.isEmpty()) {
+                System.out.println("This words have no context intersection");
+                return;
+            }
             Collections.sort(phraseiList, CtxWindow.Comparators.DOCUMENTS);
             for (CtxWindow pp : phraseiList) {
                 System.out.println(pp.getDocument() + ", " + pp.getStart() + ", " + pp.getEnd());
             }
-            documentPhrase=increaseContextBorder(phraseiList);
+            documentPhrase.putAll(increaseContextBorder(phraseiList));
         }
         finalPhrases = selectWordsInPhrase(documentPhrase, wordsFromQuery);
         htmlCreator.createHTMLFile(finalPhrases);
