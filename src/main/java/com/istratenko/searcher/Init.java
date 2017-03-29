@@ -68,9 +68,8 @@ public class Init {
         input = new FileInputStream(pathToConfigProp); //path to config.properties
         configProp.load(input);
         String mode = configProp.getProperty("mode").toLowerCase();
-        List<String> lines = null;
-        //TODO:приводить все слова к нижнему регистру при записи в базу
-        if (mode.equals("1") || mode.equals("tokenizer")) {
+        List<String> lines;
+        if (mode.equals("1") || mode.equalsIgnoreCase("tokenizer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             boolean isExistsFile = new File(pathToTextFile).exists();
             if (!isExistsFile) {
@@ -82,29 +81,26 @@ public class Init {
             s.printWordsFromText(pathToTextFile, lines);
         }
 
-        if (mode.equals("2") || mode.equals("indexer")) {
+        if (mode.equals("2") || mode.equalsIgnoreCase("indexer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
 
             boolean isMongoDbConfigFileExists = new File(pathToMDBConf).exists();
+            boolean isTextFileExists = new File(pathToTextFile).exists();
 
-            if (!isMongoDbConfigFileExists) {
-                System.out.println("Config file for mongodb is not found. Check it in config file");
+            if (!isMongoDbConfigFileExists || !isTextFileExists) {
+                System.out.println("Check paths to files in config file");
                 return;
             }
+
             mdb.initConnection(pathToMDBConf);
 
-            if (mdb.isAuthenticate()) {
-                System.out.println("Connection is ok");
-            } else {
-                System.out.println("Connection refused");
-            }
-
-            boolean isTextFileExists = new File(pathToTextFile).exists();
-            if (!isTextFileExists) {
-                System.out.println("File for with path is not found. Check it in config file");
+            if (!mdb.isAuthenticate()) {
+                System.out.println("Connection refused. Check mongodb config file");
                 return;
             }
+
+
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
             List<Word> words = s.getWords(pathToTextFile, lines);
@@ -112,7 +108,7 @@ public class Init {
             mdb.addIndex(content);
         }
 
-        if (mode.equals("3") || mode.equals("WordSearcher")) {
+        if (mode.equals("3") || mode.equalsIgnoreCase("WordSearcher")) {
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
 
             boolean isMongoDbConfigFileExists = new File(pathToMDBConf).exists();
@@ -121,12 +117,13 @@ public class Init {
                 System.out.println("Config file for mongodb is not found. Check it in config file");
                 return;
             }
+
             mdb.initConnection(pathToMDBConf);
-            if (mdb.isAuthenticate()) {
-                System.out.println("Connection is ok");
-            } else {
-                System.out.println("Connection refused");
+            if (!mdb.isAuthenticate()) {
+                System.out.println("Connection refused. Check mongodb config file");
+                return;
             }
+
             Searcher searcher = new Searcher();
             System.out.println("Enter your search query:");
             String query = new Scanner(System.in).nextLine();
@@ -150,18 +147,19 @@ public class Init {
             }
         }
 
-        if (mode.equals("4") || mode.equals("WordSearcher")) {
+        if (mode.equals("4") || mode.equalsIgnoreCase("Searcher")) {
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
             mdb.initConnection(pathToMDBConf);
-            if (mdb.isAuthenticate()) {
-                System.out.println("Connection is ok");
-            } else {
-                System.out.println("Connection refused");
+            if (!mdb.isAuthenticate()) {
+                System.out.println("Connection refused. Check mongodb config file");
+                return;
             }
+
             Searcher searcher = new Searcher();
             System.out.println("Enter your search query:");
             String query = new Scanner(System.in).nextLine();
             System.out.println("Enter context size:");
+
             int sizeContext = 0;
             do {
                 if (sizeContext < 0) {

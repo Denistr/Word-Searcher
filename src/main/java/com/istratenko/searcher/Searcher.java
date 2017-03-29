@@ -268,8 +268,9 @@ public class Searcher {
             for (int i = 1; i < rawContext.size(); i++) { //  ищем пересекающиеся окна начиная со второго слова
                 List<CtxWindow> currCtx = rawContext.get(i);
                 Collections.sort(currCtx, CtxWindow.Comparators.POSITIONS);
-                boolean bPredWorked = false;
+
                 for (CtxWindow pred : resultContextWindow) {//проходимся по каждой позиции предыдущего слова
+                    boolean bPredWorked = false;
                     for (CtxWindow cur : currCtx) {//проходимся по каждой позиции для текущего слова
 
                         curS = cur.getStart().intValue();
@@ -281,10 +282,7 @@ public class Searcher {
                             pred.setStart(Math.min(curS, predS)); // расширяем границы окна слова
                             pred.setEnd(Math.max(curE, predE));
                             bPredWorked = true;
-                        }/* else { //case, когда контексты не пересекаются (разные предложения)
-                            ctx = new CtxWindow(cur.getDocument(), curS, curE);
-                            bPredWorked = true;
-                        }*/
+                        }
                     }
                     if (!bPredWorked) {
                         deleteList.add(pred);
@@ -292,15 +290,12 @@ public class Searcher {
                 }
             }
             resultContextWindow.removeAll(deleteList);
-            /*if (ctx != null) {
-                resultContextWindow.add(ctx);
-            }*/
         }
 
         return resultContextWindow;
     }
 
-
+    //TODO:при поиске Пьер выделяет Пьеру
     private Map<String, List<String>> selectWordsInPhrase(Map<String, List<String>> phrases, List<Word> wordsFromQuery) { //уже отсортированных по возрастанию
         Map<String, List<String>> documentPhrases = new HashMap<>();
 
@@ -310,13 +305,18 @@ public class Searcher {
         }
 
         String patternString = "\\b(" + StringUtils.join(words, "|") + ")\\b";
-        Pattern pattern = Pattern.compile(patternString);
-
+        Pattern pattern = Pattern.compile(patternString, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        String currDocument = null;
+        List<String> resultPhrases = null;
         for (Map.Entry document : phrases.entrySet()) {
-            List<String> resultPhrases = new ArrayList<>();
+            if (!document.getKey().equals(currDocument)) {
+                currDocument = (String) document.getKey();
+                resultPhrases = new ArrayList<>();
+                documentPhrases.put((String) document.getKey(), resultPhrases);
+            }
+
             List<String> phrase = (List<String>) document.getValue();
             for (String p : phrase) {
-
                 Matcher matcher = pattern.matcher(p);
                 while (matcher.find()) {
                     StringBuilder wordWithFormat = new StringBuilder();
@@ -324,7 +324,6 @@ public class Searcher {
                     p = p.replace(matcher.group(1), wordWithFormat.toString());
                 }
                 resultPhrases.add(p);
-                documentPhrases.put((String) document.getKey(), resultPhrases);
             }
         }
         return documentPhrases;
@@ -337,8 +336,8 @@ public class Searcher {
         Map<String, List<String>> resultMap = new HashMap<>();
         List<String> phrase = null;
         for (CtxWindow ctx : contextList) {
-            int newStart = ctx.getStart();
-            int newEnd = ctx.getEnd();
+            int newStart = 0;//ctx.getStart();
+            int newEnd = 0;//ctx.getEnd();
             int startSent = 0;
             int whitespaces = 0;
             int endSent = 0;
@@ -347,7 +346,7 @@ public class Searcher {
 
                 boolean isExistsFile = new File(ctx.getDocument()).exists();
 
-                if (!isExistsFile){
+                if (!isExistsFile) {
                     System.out.println("File for with path is not found. Che it in config file");
                     return resultMap;
                 }
@@ -373,7 +372,7 @@ public class Searcher {
                     endSent = i;
                 }
 
-                if (endSent!=0 && (endSent < whitespaces && whitespaces < startSent)) { //если пробел лежит между концом предыдущего и началом текущего
+                if (endSent != 0 && (endSent < whitespaces && whitespaces < startSent)) { //если пробел лежит между концом предыдущего и началом текущего
                     newStart = startSent;
                     startSent = 0;
                     whitespaces = 0;
@@ -397,14 +396,14 @@ public class Searcher {
                     endSent = i;
                 }
 
-                if ((i == text.length() - 1 && isEndSent) || ((startSent > whitespaces && whitespaces > endSent) && (endSent!=0))) { //если пробел лежит между концом предыдущего и началом текущего
+                if ((i == text.length() - 1 && isEndSent) || ((startSent > whitespaces && whitespaces > endSent) && (endSent != 0))) { //если пробел лежит между концом предыдущего и началом текущего
                     newEnd = endSent;
                     phrase.add(text.substring(newStart, newEnd + 1));
                     break;
                 }
             }
-            if (ctx.getStart().equals(newStart) && ctx.getEnd().equals(newEnd)){ //если позиции равны, то в циклы мы не заходили, то и берем этот кусок
-                phrase.add(text.substring(ctx.getStart(), ctx.getEnd()+1));
+            if (ctx.getStart().equals(newStart) && ctx.getEnd().equals(newEnd)) { //если позиции равны, то в циклы мы не заходили, то и берем этот кусок
+                phrase.add(text.substring(ctx.getStart(), ctx.getEnd() + 1));
             }
 
         }
