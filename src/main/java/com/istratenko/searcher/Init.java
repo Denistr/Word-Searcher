@@ -39,38 +39,14 @@ public class Init {
             }
         }
     }
-/*
-    private void readFile(String pathToFile) throws IOException {
-        FileInputStream inputStream = null;
-        Scanner sc = null;
-        try {
-            inputStream = new FileInputStream(pathToFile);
-            sc = new Scanner(inputStream, "UTF-8");
-            while (sc.hasNextLine()) {
-                String line = sc.next();
-                 System.out.print(line);
-            }
-            // note that Scanner suppresses exceptions
-            if (sc.ioException() != null) {
-                throw sc.ioException();
-            }
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (sc != null) {
-                sc.close();
-            }
-        }
-    }
-*/
-
 
     private void init(String pathToConfigProp) throws IOException {
         input = new FileInputStream(pathToConfigProp); //path to config.properties
         configProp.load(input);
         String mode = configProp.getProperty("mode").toLowerCase();
         List<String> lines;
+
+        //первое задание
         if (mode.equals("1") || mode.equalsIgnoreCase("tokenizer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             boolean isExistsFile = new File(pathToTextFile).exists();
@@ -83,6 +59,7 @@ public class Init {
             s.printWordsFromText(pathToTextFile, lines);
         }
 
+        //второе здаание
         if (mode.equals("2") || mode.equalsIgnoreCase("indexer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
@@ -108,8 +85,10 @@ public class Init {
             List<Word> words = s.getWords(pathToTextFile, lines);
             Map<String, List<Positions>> content = s.getAllPositionOfWord(words);
             mdb.addIndex(content);
+            System.out.println("All words in database");
         }
 
+        //третье задание
         if (mode.equals("3") || mode.equalsIgnoreCase("WordSearcher")) {
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
 
@@ -149,6 +128,7 @@ public class Init {
             }
         }
 
+        //четвертое задание
         if (mode.equals("4") || mode.equalsIgnoreCase("Searcher")) {
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
             mdb.initConnection(pathToMDBConf);
@@ -168,7 +148,8 @@ public class Init {
                     System.out.println("Context size should be >=0");
                 }
                 String input = new Scanner(System.in).nextLine();
-                if (input != null && !input.isEmpty()) {
+                String pattern = "-?\\d+";
+                if (input != null && !input.isEmpty() && input.matches(pattern)) {
                     sizeContext = Integer.parseInt(input);
                 } else {
                     sizeContext = -1;

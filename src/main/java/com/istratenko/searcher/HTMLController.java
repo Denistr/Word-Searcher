@@ -13,11 +13,12 @@ public class HTMLController {
 
     /**
      * генерирует html файл с найденными фразами
+     *
      * @param phrases найденные итоговые фразы
      */
     public void createHTMLFile(Map<String, List<String>> phrases) {
         File f = new File("result.html");
-        String currDocument=null;
+        String currDocument = null;
         Writer bw = null;
 
         try {
@@ -27,9 +28,9 @@ public class HTMLController {
             bw.write("<h2>Result:</h2>");
 
             for (Map.Entry document : phrases.entrySet()) {
-                if (!document.getKey().equals(currDocument)){
-                    currDocument=(String)document.getKey();
-                    String doc = new File((String)document.getKey()).getName();
+                if (!document.getKey().equals(currDocument)) {
+                    currDocument = (String) document.getKey();
+                    String doc = new File((String) document.getKey()).getName();
                     StringBuilder fileName = new StringBuilder()
                             .append("<h3><a href=")
                             .append(document.getKey()).append(">")
@@ -37,10 +38,11 @@ public class HTMLController {
                             .append("</h3>");
                     bw.write(fileName.toString());
                 }
-
-                for (String phrase : (List<String>)document.getValue()) {
-                    StringBuilder body = new StringBuilder().append(phrase).append("<br>");
+                int i = 1;
+                for (String phrase : (List<String>) document.getValue()) {
+                    StringBuilder body = new StringBuilder().append(i + ". ").append(phrase).append("<br>");
                     bw.write(body.toString());
+                    i++;
                 }
             }
             bw.write("</body>");
@@ -49,10 +51,10 @@ public class HTMLController {
 
             Desktop.getDesktop().browse(f.toURI());
 
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            if (bw!=null) {
+            if (bw != null) {
                 try {
                     bw.close();
                 } catch (IOException e) {

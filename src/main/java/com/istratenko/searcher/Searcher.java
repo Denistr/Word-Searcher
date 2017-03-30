@@ -250,6 +250,7 @@ public class Searcher {
 
     /**
      * Объединяет контексты слов
+     *
      * @param rawContext список контекстов каждого запрашиваемого слова
      * @return список пересекающихся контекстов по словам
      */
@@ -298,11 +299,12 @@ public class Searcher {
 
     /**
      * Выделяет жирным запрашиваемые слова в найденной фразе из текста
-     * @param phrases Map: key - документ, value  - список фраз из этого документа
+     *
+     * @param phrases        Map: key - документ, value  - список фраз из этого документа
      * @param wordsFromQuery список слов из поискового запроса
      * @return Map: key - документ, value  - список фраз из этого документа со словами, выделенными жирным
      */
-    private Map<String, List<String>> selectWordsInPhrase(Map<String, List<String>> phrases, List<Word> wordsFromQuery) { //уже отсортированных по возрастанию
+    private Map<String, List<String>> selectWordsInPhrase(Map<String, List<String>> phrases, List<Word> wordsFromQuery) throws IOException { //уже отсортированных по возрастанию
         Map<String, List<String>> documentPhrases = new HashMap<>();
 
         List<String> words = new ArrayList<>();
@@ -310,7 +312,7 @@ public class Searcher {
             words.add(w.getWord());
         }
 
-        String patternString = "\\b(" + StringUtils.join(words, "|") + ")\\b";
+        String patternString = "\\b([0-9]*" + StringUtils.join(words, "|") + "[0-9]*)\\b";
         Pattern pattern = Pattern.compile(patternString, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
         String currDocument = null;
         List<String> resultPhrases = null;
@@ -322,12 +324,23 @@ public class Searcher {
             }
 
             List<String> phrase = (List<String>) document.getValue();
+            WordSearcher ws = new WordSearcher();
+            List<Word> clearMatchedWord = new ArrayList<>();
             for (String p : phrase) {
                 Matcher matcher = pattern.matcher(p);
                 while (matcher.find()) {
+                    List<String> matchedWords = new ArrayList<>();
+                    matchedWords.add(matcher.group(1));
                     StringBuilder wordWithFormat = new StringBuilder();
-                    wordWithFormat = wordWithFormat.append("<b>").append(matcher.group(1)).append("</b>"); //обрамляем искомое слово тегами
-                    p = p.replaceAll("\\b"+matcher.group(1)+"\\b", wordWithFormat.toString());
+                    clearMatchedWord = ws.getWords(null, matchedWords);
+                    if (matcher.group(1).equalsIgnoreCase(clearMatchedWord.get(0).getWord())) { //если слово без всяких примесей (без цифр в начале и конце)
+                        wordWithFormat = wordWithFormat.append("<b>").append(matcher.group(1)).append("</b>"); //обрамляем искомое слово тегами
+                        p = p.replaceAll("\\b" + matcher.group(1) + "\\b", wordWithFormat.toString());
+                    } else { //если слово содержит цифры и в начале или конце
+                        String replaceWord = matcher.group(1).substring(clearMatchedWord.get(0).getPositions().getStart(), clearMatchedWord.get(0).getPositions().getEnd() + 1); //вырезаем слово, которое нужно заменить
+                        wordWithFormat = wordWithFormat.append("<b>").append(replaceWord).append("</b>"); //обрамляем искомое слово тегами
+                        p = p.replaceAll(replaceWord, wordWithFormat.toString()); //заменяем
+                    }
                 }
                 resultPhrases.add(p);
             }
@@ -338,6 +351,7 @@ public class Searcher {
 
     /**
      * расширяет границы найденного контекстного окна до границ предложений, в которые это контекстное окно входит
+     *
      * @param contextList отсортированный по документам список позиций контекстов
      * @return Map: key - документ, value - List<String> список фраз из этого документа
      * @throws IOException
@@ -425,8 +439,9 @@ public class Searcher {
 
     /**
      * Находит цитату по запрашиваемым словам в тексте и генерирует html файл
-     * @param mdb инстанс класса MongoDbWorker
-     * @param queryWords поисковый запрос
+     *
+     * @param mdb         инстанс класса MongoDbWorker
+     * @param queryWords  поисковый запрос
      * @param sizeContext размер контекстного окна
      * @throws IOException
      */
