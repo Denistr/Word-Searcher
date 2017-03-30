@@ -11,6 +11,10 @@ import java.util.Map;
  */
 public class HTMLController {
 
+    /**
+     * генерирует html файл с найденными фразами
+     * @param phrases найденные итоговые фразы
+     */
     public void createHTMLFile(Map<String, List<String>> phrases) {
         File f = new File("result.html");
         String currDocument=null;

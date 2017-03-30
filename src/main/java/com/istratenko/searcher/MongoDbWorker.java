@@ -23,15 +23,12 @@ public class MongoDbWorker {
     // это клиент который обеспечит подключение к БД
     private MongoClient mongoClient;
 
-    // В нашем случае, этот класс дает
-    // возможность аутентифицироваться в MongoDB
     private DB db;
 
-    // тут мы будем хранить состояние подключения к БД
+    // состояние подключения к БД
     private boolean authenticate;
 
-    // И класс который обеспечит возможность работать
-    // с коллекциями / таблицами MongoDB
+    //класс, позволяющий работать с коллекциями
     private DBCollection table;
 
     Properties prop = new Properties();
@@ -88,6 +85,10 @@ public class MongoDbWorker {
         }
     }
 
+    /**
+     * добавляет Map: key - слово, value - массив позиций  в базу данных
+     * @param words Map: key - слово, value - массив позиций
+     */
     public void addIndex(Map<String, List<Positions>> words) {
         for (Map.Entry<String, List<Positions>> word : words.entrySet()) {
             ObjectMapper mapper = new ObjectMapper();
@@ -97,11 +98,16 @@ public class MongoDbWorker {
             DBObject listItem = new BasicDBObject("$addToSet", new BasicDBObject(word.getKey(), positionOfWord)); //for each new array element make addToSet
 
             BasicDBObject findQuery = new BasicDBObject();
-            findQuery.put(word.getKey(), new BasicDBObject("$exists", true)); //if element exists, then retirn its
+            findQuery.put(word.getKey(), new BasicDBObject("$exists", true)); //if element exists, then return its
             table.update(findQuery, listItem, true, false); //upsert=true (make merge), multi=false
         }
     }
 
+    /**
+     * позволяет получить конкретную Map: key - слово, value - массив позиций из базу данных (по заданному слову)
+     * @param word слово, по котором происходит поиск в базе среди ключей
+     * @return Map: key - слово, value - массив позиций этого слова
+     */
     public Map<String, List<Positions>> getIndex(String word) {
         Map<String, List<Positions>> wordItems = new HashMap<>();
         BasicDBObject query = new BasicDBObject();
@@ -123,6 +129,11 @@ public class MongoDbWorker {
         return wordItems;
     }
 
+    /**
+     * позволяет получить все записи из базы данных
+     * @return Map: key - слово, value - массив позиций этого слова
+     * @throws IOException
+     */
     public Map<String, List<Positions>> getAllWords() throws IOException {
         Map<String, List<Positions>> allWords = new HashMap<>();
         Map<String, List<Positions>> finalMap = new HashMap<>();

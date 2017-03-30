@@ -249,8 +249,9 @@ public class Searcher {
     }
 
     /**
-     * @param rawContext
-     * @return лист пересекающихся контекстов по словам
+     * Объединяет контексты слов
+     * @param rawContext список контекстов каждого запрашиваемого слова
+     * @return список пересекающихся контекстов по словам
      */
     private List<CtxWindow> ctxAssociation(List<List<CtxWindow>> rawContext) {
         List<CtxWindow> resultContextWindow = new ArrayList<>();
@@ -295,7 +296,12 @@ public class Searcher {
         return resultContextWindow;
     }
 
-    //TODO:при поиске Пьер выделяет Пьеру
+    /**
+     * Выделяет жирным запрашиваемые слова в найденной фразе из текста
+     * @param phrases Map: key - документ, value  - список фраз из этого документа
+     * @param wordsFromQuery список слов из поискового запроса
+     * @return Map: key - документ, value  - список фраз из этого документа со словами, выделенными жирным
+     */
     private Map<String, List<String>> selectWordsInPhrase(Map<String, List<String>> phrases, List<Word> wordsFromQuery) { //уже отсортированных по возрастанию
         Map<String, List<String>> documentPhrases = new HashMap<>();
 
@@ -321,7 +327,7 @@ public class Searcher {
                 while (matcher.find()) {
                     StringBuilder wordWithFormat = new StringBuilder();
                     wordWithFormat = wordWithFormat.append("<b>").append(matcher.group(1)).append("</b>"); //обрамляем искомое слово тегами
-                    p = p.replace(matcher.group(1), wordWithFormat.toString());
+                    p = p.replaceAll("\\b"+matcher.group(1)+"\\b", wordWithFormat.toString());
                 }
                 resultPhrases.add(p);
             }
@@ -330,6 +336,12 @@ public class Searcher {
     }
 
 
+    /**
+     * расширяет границы найденного контекстного окна до границ предложений, в которые это контекстное окно входит
+     * @param contextList отсортированный по документам список позиций контекстов
+     * @return Map: key - документ, value - List<String> список фраз из этого документа
+     * @throws IOException
+     */
     private Map<String, List<String>> increaseContextBorder(List<CtxWindow> contextList) throws IOException {
         String text = null;
         String currDocument = null;
@@ -411,6 +423,13 @@ public class Searcher {
         return resultMap;
     }
 
+    /**
+     * Находит цитату по запрашиваемым словам в тексте и генерирует html файл
+     * @param mdb инстанс класса MongoDbWorker
+     * @param queryWords поисковый запрос
+     * @param sizeContext размер контекстного окна
+     * @throws IOException
+     */
     public void findQuoteInText(final MongoDbWorker mdb, String queryWords, int sizeContext) throws IOException {
         Map<String, List<String>> documentPhrase = new HashMap<>();
         Map<String, List<String>> finalPhrases;
@@ -435,10 +454,10 @@ public class Searcher {
             for (CtxWindow pp : phraseiList) {
                 System.out.println(pp.getDocument() + ", " + pp.getStart() + ", " + pp.getEnd());
             }
-            documentPhrase.putAll(increaseContextBorder(phraseiList));
+            documentPhrase.putAll(increaseContextBorder(phraseiList)); //добавляем а мапу уже увеличенный контекст до границы предложения
         }
-        finalPhrases = selectWordsInPhrase(documentPhrase, wordsFromQuery);
-        htmlCreator.createHTMLFile(finalPhrases);
+        finalPhrases = selectWordsInPhrase(documentPhrase, wordsFromQuery); //выделяем жирным искомые слова во фразе
+        htmlCreator.createHTMLFile(finalPhrases); //создаем html файл
 
     }
 }
