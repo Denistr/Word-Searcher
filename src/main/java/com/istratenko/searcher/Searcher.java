@@ -97,6 +97,7 @@ public class Searcher {
 
     /**
      * Возвращает из базы все слова, отсортированные по позициям в документе
+     *
      * @param mdb объект класса MongoDbWorker для работы с БД
      * @return список позиций всех слов, содержащихся в базе, отсортированный по позициям
      * сортировка происходит сначала по документу, потом по страторов позиции слова
@@ -115,15 +116,16 @@ public class Searcher {
 
     /**
      * Возвращает мапу всех позиций слова в документе
+     *
      * @param mdb
-     * @param queryWords
+     * @param queryWords строка поискового запроса
      * @return Map key=документ, Value=мап. Вложенный мап = key - слово, value=лист позиций этого слова
      * @throws IOException
      */
     public Map<String, Map<String, List<Positions>>> getPositionInDocument(final MongoDbWorker mdb, String queryWords) throws IOException {
         Map<String, Map<String, List<Positions>>> documents = new HashMap<>(); //key - документ, key - слово
 
-        List<Word> findedWordsList = searchDocuments(mdb, queryWords);
+        List<Word> findedWordsList = searchDocuments(mdb, queryWords); //получаю слова, которые находятся в одинаковымх документах
         if (findedWordsList == null) {
             return documents;
         }
@@ -156,8 +158,9 @@ public class Searcher {
 
     /**
      * Определяем контекстное окно для найденного слова в тексте
-     * @param allWordsInDB список всех слов в базе данных
-     * @param word мапа -ключ- слово, значение - лист его позиций в документе
+     *
+     * @param allWordsInDB  список всех слов в базе данных
+     * @param word          мапа -ключ- слово, значение - лист его позиций в документе
      * @param contextWindow размер контекстного окна
      * @return лист листов, где i элемент списка - это слово из запроса, а лист i эл-та - это все контексты для этого слова
      * @throws IOException
@@ -167,7 +170,6 @@ public class Searcher {
         Set<CtxWindow> resultWindow;
         List<List<CtxWindow>> commonlist = new ArrayList<>();
         for (Map.Entry position : word.entrySet()) {
-            String currWord = (String) position.getKey();
             contextWindowPos = new ArrayList<>();
             //беру текущее слово, нахожу его в листе всех слов, определяю его индекс в отсортированном списке
 
@@ -200,54 +202,20 @@ public class Searcher {
                     }
                 }
 
-
                 int ctxStart = startWordInContext.getStart();
                 int ctxEnd = endWordInContext.getEnd();
                 CtxWindow ctxWindow = new CtxWindow(p.getDocument(), ctxStart, ctxEnd);
-                //CtxWindow ctxWindow = trimmingSentence(p.getDocument(), ctxStart, ctxEnd, currWord);
                 contextWindowPos.add(ctxWindow);
-
-
             }
             commonlist.add(contextWindowPos);
             //получаю результирующий спиок цитат в одном документе
             //мержу цитаты для одного документа по каждому слову
             //возвращаю список смерженных цитат
         }
-        resultWindow = new HashSet<>(ctxAssociation(commonlist));
-
+        resultWindow = new HashSet<>(ctxAssociation(commonlist)); //объединяю контексты слов
         return resultWindow;
     }
 
-/*
-    private CtxWindow trimmingSentence(String document, int start, int end, String word) throws IOException { //этот метод не учитывает N количество пробелов и N
-        // количество знаков припенания между предлложениями->неправильно опеределются позици начала и конца
-        String text = new String(Files.readAllBytes(Paths.get(document)));
-        int newStart = start;
-        int newEnd = end;
-        String sentenceArray[] = text.substring(start, end + 1).split("[!|\\.|\\?]+[\\s]+"); //regexp, который делит контекст на предложения по .?! и пробелам
-        text = null; //чтобы gc очистил память от текста
-        for (int i = 0; i < sentenceArray.length; i++) {
-            if (sentenceArray[i].contains(word)) { //если в найденном предложении содержится слово, то беру его и определяю его новые координаты в тексте
-                if (i == 0) { //если это первое преложение из контекста
-                    newStart = start;
-                    newEnd = start + sentenceArray[i].length() - 1;
-                } else if (i == sentenceArray.length - 1) { //если это последнее предложение в тексте
-                    newStart = end - sentenceArray[i].length() + 1;
-                    newEnd = end;
-                } else { //если это предложение в середине
-                    int summLeng = 0;
-                    for (int j = 0; j < i; j++) { //цикл по всем предложениям до текущего i, чтобы найти их суммарную длину
-                        summLeng += sentenceArray[j].length() + 2;
-                    }
-                    newStart = start + summLeng;
-                    newEnd = newStart + sentenceArray[i].length() - 1; //стартовая позиция найденного фрагмента+длина найденного фрагмента; минус точка и пробел
-                }
-            }
-        }
-        return new CtxWindow(document, newStart, newEnd);
-    }
-*/
     /**
      * Объединяет пересекающиеся контексты слов
      *
@@ -265,7 +233,6 @@ public class Searcher {
         int predE = 0;
 
         resultContextWindow.addAll(rawContext.get(0)); //добавляем все контексты первого слова в результирующий список
-        CtxWindow ctx = null;
         if (rawContext.size() > 1) {
             for (int i = 1; i < rawContext.size(); i++) { //  ищем пересекающиеся окна начиная со второго слова
                 List<CtxWindow> currCtx = rawContext.get(i);
@@ -291,14 +258,22 @@ public class Searcher {
                     }
                 }
             }
-            resultContextWindow.removeAll(deleteList);
+            resultContextWindow.removeAll(deleteList); //удаляем все контексты, которые не пересеклись
         }
 
         return resultContextWindow;
     }
 
 
-    private Map<String, List<String>> selectWordsInPhrase(Map<String, Set<String>> phrases, List<Word> wordsFromQuery) throws IOException { //уже отсортированных по возрастанию
+    /**
+     * Выделяет искомые слова из поискового запроса жирным цветом
+     *
+     * @param phrases        - Map<String, Set<String>>, где ключ - это дкумент, значение - Set цитат, которые уже достали из текста
+     * @param wordsFromQuery список слов из поискового запроса
+     * @return Map<String, List<String>> ключ - документ, значение - список цитат из текста, искомые слова в которых выделены жирным
+     * @throws IOException
+     */
+    private Map<String, List<String>> selectWordsInPhrase(Map<String, Set<String>> phrases, List<Word> wordsFromQuery) throws IOException {
         Map<String, List<String>> documentPhrases = new HashMap<>();
 
         List<String> words = new ArrayList<>();
@@ -320,10 +295,8 @@ public class Searcher {
             List<Word> clearMatchedWord = new ArrayList<>();
 
             for (String p : phrase) {
-                boolean wasReplaces = false;
                 List<String> matchedWords = new ArrayList<>();
                 matchedWords.add(p);
-                StringBuilder wordWithFormat = new StringBuilder();
                 clearMatchedWord = ws.getWords(null, matchedWords);
 
                 StringBuilder resultStr = new StringBuilder();
@@ -331,8 +304,8 @@ public class Searcher {
                 int prevStart = 0;
                 for (Word clearWord : clearMatchedWord) {
 
-                    int wStart = clearWord.getPositions().getStart() - prevStart;
-                    int wEnd = clearWord.getPositions().getEnd() - prevStart;
+                    int wStart = clearWord.getPositions().getStart() - prevStart; //позиция начала слова относительно нового старта
+                    int wEnd = clearWord.getPositions().getEnd() - prevStart; //позиция конца слова относительно нового старта
                     int predCharPos = wStart - 1;
                     int postCharPos = wEnd + 1;
 
@@ -348,7 +321,7 @@ public class Searcher {
                     if (isPredChar && isPostChar) {
                         // Убедились что это отдельно стоящее слово или слово обрамленное цифрами
                         String foundword = p.substring(wStart, wEnd + 1);
-                        if (isWordInQuery(words, foundword)) {
+                        if (isWordInQuery(words, foundword)) { //если это слово из запроса, то выделяем его жирным
                             resultStr.append(p.substring(0, wStart));
                             resultStr.append("<b>");
                             resultStr.append(foundword);
@@ -370,6 +343,11 @@ public class Searcher {
         return documentPhrases;
     }
 
+    /**
+     * @param words список слов из запроса
+     * @param word  слово, которое нжно проверить
+     * @return true, если word соответвствует слову из запроса, иначе- false;
+     */
     private boolean isWordInQuery(List<String> words, String word) {
 
         for (String w : words) {
@@ -381,7 +359,7 @@ public class Searcher {
     }
 
     /**
-     * расширяет границы найденного контекстного окна до границ предложений, в которые это контекстное окно входит
+     * расширяет границы найденного контекстного окна до границ предложений, в которые это контекстное окно входит, и достает из текста цитату
      *
      * @param contextList отсортированный по документам список позиций контекстов
      * @return Map: key - документ, value - Set<String> список фраз из этого документа
@@ -393,8 +371,8 @@ public class Searcher {
         Map<String, Set<String>> resultMap = new HashMap<>();
         Set<String> phrase = null;
         for (CtxWindow ctx : contextList) {
-            int newStart = 0;//ctx.getStart();
-            int newEnd = 0;//ctx.getEnd();
+            int newStart = 0;
+            int newEnd = 0;
             int startSent = 0;
             int whitespaces = 0;
             int endSent = 0;
@@ -484,23 +462,23 @@ public class Searcher {
         List<Word> wordsFromQuery = ws.getWords(null, lines);
         HTMLController htmlCreator = new HTMLController();
 
-        Map<String, Map<String, List<Positions>>> positionsWordsInDoc = getPositionInDocument(mdb, queryWords);
+        Map<String, Map<String, List<Positions>>> positionsWordsInDoc = getPositionInDocument(mdb, queryWords); //получаем позиции слов, которые находятся в одном документе
         if (positionsWordsInDoc.isEmpty()) {
             System.out.println("Nothing found on your request");
             return;
         }
         List<Positions> allWordsInDB = getAllPositions(mdb);
         for (Map.Entry word : positionsWordsInDoc.entrySet()) {
-            List<CtxWindow> phraseiList = new ArrayList<>(identifyContextPosition(allWordsInDB, (Map<String, List<Positions>>) word.getValue(), sizeContext));
+            List<CtxWindow> phraseiList = new ArrayList<>(identifyContextPosition(allWordsInDB, (Map<String, List<Positions>>) word.getValue(), sizeContext)); //определяем границы контекстного окна
             if (phraseiList.isEmpty()) {
                 System.out.println("This words have no context intersection");
                 return;
             }
             Collections.sort(phraseiList, CtxWindow.Comparators.DOCUMENTS);
-            for (CtxWindow pp : phraseiList) {
+            /*for (CtxWindow pp : phraseiList) {
                 System.out.println(pp.getDocument() + ", " + pp.getStart() + ", " + pp.getEnd());
-            }
-            documentPhrase.putAll(increaseContextBorder(phraseiList)); //добавляем а мапу уже увеличенный контекст до границы предложения
+            }*/
+            documentPhrase.putAll(increaseContextBorder(phraseiList)); //увеличиваем контекст до границы предложений и  добавляем а мапу уже увеличенный контекст
         }
         finalPhrases = selectWordsInPhrase(documentPhrase, wordsFromQuery); //выделяем жирным искомые слова во фразе
         htmlCreator.createHTMLFile(finalPhrases); //создаем html файл

@@ -57,7 +57,7 @@ public class Init {
             s.printWordsFromText(pathToTextFile, lines);
         }
 
-        //второе здаание
+        //второе задание
         if (mode.equals("2") || mode.equalsIgnoreCase("indexer")) {
             String pathToTextFile = configProp.getProperty("pathToFile");
             String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
