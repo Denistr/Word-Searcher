@@ -4,15 +4,12 @@ import com.istratenko.searcher.entity.CtxWindow;
 import com.istratenko.searcher.entity.Positions;
 import com.istratenko.searcher.entity.Word;
 import com.istratenko.searcher.tokenizer.WordSearcher;
-import com.sun.deploy.util.StringUtils;
 
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Created by denis on 21.03.17.
@@ -50,7 +47,7 @@ public class Searcher {
             }
             firstStep = false;
         }
-        return resultList; //возвращает набор позиций
+        return resultList; //возвращает набор позиций слов из одного документа
     }
 
 
@@ -72,23 +69,23 @@ public class Searcher {
     }
 
     /**
-     * пересечение 2-ух ArrayList, содержащих объекты WorkItem.
+     * Пересечение 2-ух ArrayList, содержащих объекты WorkItem.
      *
-     * @param a
-     * @param b
+     * @param a первая коллекция
+     * @param b вторая коллекция
      * @return ArrayList слов, содержащихся в одних документах
      */
     private Collection<Word> intersection(Collection<Word> a, Collection<Word> b) {
         Collection<Word> result = new ArrayList<>();
         List<Word> listToDelete = new ArrayList<>();
         for (Word n : a) { //проходим по первой коллекции
-            for (Word nn : b) {
-                if (n.getPositions().getDocument().equals(nn.getPositions().getDocument())) {
-                    if (!listToDelete.contains(nn)) {
+            for (Word nn : b) { //проходим по всем словам второй кллекции
+                if (n.getPositions().getDocument().equals(nn.getPositions().getDocument())) { //если слова находятся в одинаковых документах
+                    if (!listToDelete.contains(nn)) { //и оюъект из коллекции b еще не был добавлен в результирующую колекцию
                         result.add(nn);
                     }
-                    listToDelete.add(nn);
-                    if (!result.contains(n)) {
+                    listToDelete.add(nn); //запоминаем, что этот объект уже есть в коллекции
+                    if (!result.contains(n)) { //если объект из коллекции a еще не был добавлен в результирующую колекцию
                         result.add(n);
                     }
                 }
@@ -99,7 +96,8 @@ public class Searcher {
 
 
     /**
-     * @param mdb
+     * Возвращает из базы все слова, отсортированные по позициям в документе
+     * @param mdb объект класса MongoDbWorker для работы с БД
      * @return список позиций всех слов, содержащихся в базе, отсортированный по позициям
      * сортировка происходит сначала по документу, потом по страторов позиции слова
      * @throws IOException
@@ -111,11 +109,12 @@ public class Searcher {
 
             allPositions.addAll((List<Positions>) word.getValue());
         }
-        Collections.sort(allPositions, Positions.Comparators.POSITIONS);
+        Collections.sort(allPositions, Positions.Comparators.POSITIONS); //сортируем сначала по документам, потом по позициям в них
         return allPositions;
     }
 
     /**
+     * Возвращает мапу всех позиций слова в документе
      * @param mdb
      * @param queryWords
      * @return Map key=документ, Value=мап. Вложенный мап = key - слово, value=лист позиций этого слова
@@ -128,27 +127,27 @@ public class Searcher {
         if (findedWordsList == null) {
             return documents;
         }
-        Collections.sort(findedWordsList, Word.Comparators.DOCUMENT); //sort by documents
+        Collections.sort(findedWordsList, Word.Comparators.DOCUMENT); //сортируем все слова по документам, потом по словам
 
         String currDocument = null;
         String currWord = null;
         HashMap<String, List<Positions>> wordPositions = null;
         List<Positions> listPositions = null;
         for (Word findedWord : findedWordsList) {
-            if (!findedWord.getPositions().getDocument().equals(currDocument)) {
+            if (!findedWord.getPositions().getDocument().equals(currDocument)) { //если перешли к новому документу, то записывам все слова и позиции по старому
                 currWord = null;
                 wordPositions = new HashMap<>();
                 currDocument = findedWord.getPositions().getDocument();
                 documents.putIfAbsent(currDocument, wordPositions);
             }
 
-            if (!(findedWord.getWord().equals(currWord))) {
+            if (!(findedWord.getWord().equals(currWord))) { //попадаем сюда, если обрабатываем новое слово
                 currWord = findedWord.getWord();
                 listPositions = new ArrayList<>();
                 wordPositions.put(currWord, listPositions);
             }
             if (listPositions != null) {
-                listPositions.add(findedWord.getPositions());
+                listPositions.add(findedWord.getPositions()); //попадаем сюда, если мы обрабатываем все то же слово, но другую его позицию
             }
         }
         return documents;
@@ -156,10 +155,11 @@ public class Searcher {
 
 
     /**
-     * @param allWordsInDB
-     * @param word
-     * @param contextWindow
-     * @return лист листов, где i элемент списка - это слово из запроса, а лист - это все контексты для этого слова
+     * Определяем контекстное окно для найденного слова в тексте
+     * @param allWordsInDB список всех слов в базе данных
+     * @param word мапа -ключ- слово, значение - лист его позиций в документе
+     * @param contextWindow размер контекстного окна
+     * @return лист листов, где i элемент списка - это слово из запроса, а лист i эл-та - это все контексты для этого слова
      * @throws IOException
      */
     private Set<CtxWindow> identifyContextPosition(List<Positions> allWordsInDB, Map<String, List<Positions>> word, int contextWindow) throws IOException {
@@ -219,7 +219,7 @@ public class Searcher {
         return resultWindow;
     }
 
-
+/*
     private CtxWindow trimmingSentence(String document, int start, int end, String word) throws IOException { //этот метод не учитывает N количество пробелов и N
         // количество знаков припенания между предлложениями->неправильно опеределются позици начала и конца
         String text = new String(Files.readAllBytes(Paths.get(document)));
@@ -247,9 +247,9 @@ public class Searcher {
         }
         return new CtxWindow(document, newStart, newEnd);
     }
-
+*/
     /**
-     * Объединяет контексты слов
+     * Объединяет пересекающиеся контексты слов
      *
      * @param rawContext список контекстов каждого запрашиваемого слова
      * @return список пересекающихся контекстов по словам
@@ -298,9 +298,7 @@ public class Searcher {
     }
 
 
-
-
-    private Map<String, List<String>> selectWordsInPhrase(Map<String, List<String>> phrases, List<Word> wordsFromQuery) throws IOException { //уже отсортированных по возрастанию
+    private Map<String, List<String>> selectWordsInPhrase(Map<String, Set<String>> phrases, List<Word> wordsFromQuery) throws IOException { //уже отсортированных по возрастанию
         Map<String, List<String>> documentPhrases = new HashMap<>();
 
         List<String> words = new ArrayList<>();
@@ -308,8 +306,6 @@ public class Searcher {
             words.add(w.getWord());
         }
 
-        //String patternString = "\\b([0-9]*" + StringUtils.join(words, "|") + "[0-9]*)\\b";
-        //Pattern pattern = Pattern.compile(patternString, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
         String currDocument = null;
         List<String> resultPhrases = null;
         for (Map.Entry document : phrases.entrySet()) {
@@ -319,12 +315,12 @@ public class Searcher {
                 documentPhrases.put((String) document.getKey(), resultPhrases);
             }
 
-            List<String> phrase = (List<String>) document.getValue();
+            Set<String> phrase = (Set<String>) document.getValue();
             WordSearcher ws = new WordSearcher();
             List<Word> clearMatchedWord = new ArrayList<>();
 
             for (String p : phrase) {
-                boolean wasReplaces=false;
+                boolean wasReplaces = false;
                 List<String> matchedWords = new ArrayList<>();
                 matchedWords.add(p);
                 StringBuilder wordWithFormat = new StringBuilder();
@@ -336,23 +332,23 @@ public class Searcher {
                 for (Word clearWord : clearMatchedWord) {
 
                     int wStart = clearWord.getPositions().getStart() - prevStart;
-                    int wEnd   = clearWord.getPositions().getEnd() - prevStart;
+                    int wEnd = clearWord.getPositions().getEnd() - prevStart;
                     int predCharPos = wStart - 1;
                     int postCharPos = wEnd + 1;
 
                     boolean isPredChar = true;
-                    if (predCharPos>=0) {
+                    if (predCharPos >= 0) {
                         isPredChar = !Character.isLetter(p.charAt(predCharPos));
                     }
                     boolean isPostChar = true;
-                    if (postCharPos<p.length()) {
+                    if (postCharPos < p.length()) {
                         isPostChar = !Character.isLetter(p.charAt(postCharPos));
                     }
-                    boolean       bWasBolded = false;
-                    if(isPredChar && isPostChar) {
-                    // Убедились что это отдельно стоящее слово или слово обрамленное цифрами
-                        String foundword =  p.substring(wStart, wEnd+1);
-                        if ( isWordInQuery(words, foundword )) {
+                    boolean bWasBolded = false;
+                    if (isPredChar && isPostChar) {
+                        // Убедились что это отдельно стоящее слово или слово обрамленное цифрами
+                        String foundword = p.substring(wStart, wEnd + 1);
+                        if (isWordInQuery(words, foundword)) {
                             resultStr.append(p.substring(0, wStart));
                             resultStr.append("<b>");
                             resultStr.append(foundword);
@@ -360,8 +356,8 @@ public class Searcher {
                             bWasBolded = true;
                         }
                     }
-                    if(!bWasBolded)    {
-                        resultStr.append(p.substring(0, wEnd+1));
+                    if (!bWasBolded) {
+                        resultStr.append(p.substring(0, wEnd + 1));
                     }
                     prevStart = prevStart + wEnd + 1;
                     p = origp.substring(prevStart);
@@ -374,7 +370,7 @@ public class Searcher {
         return documentPhrases;
     }
 
-    private boolean isWordInQuery( List<String> words, String word ){
+    private boolean isWordInQuery(List<String> words, String word) {
 
         for (String w : words) {
             if (w.equalsIgnoreCase(word)) {
@@ -383,18 +379,19 @@ public class Searcher {
         }
         return false;
     }
+
     /**
      * расширяет границы найденного контекстного окна до границ предложений, в которые это контекстное окно входит
      *
      * @param contextList отсортированный по документам список позиций контекстов
-     * @return Map: key - документ, value - List<String> список фраз из этого документа
+     * @return Map: key - документ, value - Set<String> список фраз из этого документа
      * @throws IOException
      */
-    private Map<String, List<String>> increaseContextBorder(List<CtxWindow> contextList) throws IOException {
+    private Map<String, Set<String>> increaseContextBorder(List<CtxWindow> contextList) throws IOException {
         String text = null;
         String currDocument = null;
-        Map<String, List<String>> resultMap = new HashMap<>();
-        List<String> phrase = null;
+        Map<String, Set<String>> resultMap = new HashMap<>();
+        Set<String> phrase = null;
         for (CtxWindow ctx : contextList) {
             int newStart = 0;//ctx.getStart();
             int newEnd = 0;//ctx.getEnd();
@@ -412,7 +409,7 @@ public class Searcher {
                 }
 
                 text = new String(Files.readAllBytes(Paths.get(ctx.getDocument())));
-                phrase = new ArrayList<>();
+                phrase = new HashSet<>();
                 currDocument = ctx.getDocument();
                 resultMap.put(ctx.getDocument(), phrase);
             }
@@ -456,16 +453,16 @@ public class Searcher {
                     endSent = i;
                 }
 
-                if ((i == text.length() - 1 && isEndSent) || ((startSent > whitespaces && whitespaces > endSent) && (endSent != 0))) { //если пробел лежит между концом предыдущего и началом текущего
+                if ((startSent > whitespaces && whitespaces > endSent) && (endSent != 0)) {  // если пробел лежит между концом предыдущего и началом текущего
                     newEnd = endSent;
+                    phrase.add(text.substring(newStart, newEnd + 1));
+                    break;
+                } else if ((i == text.length() - 1)) { //если последний символ текста, т.к максимум можно расширить до конца текста
+                    newEnd = i;
                     phrase.add(text.substring(newStart, newEnd + 1));
                     break;
                 }
             }
-            if (ctx.getStart().equals(newStart) && ctx.getEnd().equals(newEnd)) { //если позиции равны, то в циклы мы не заходили, то и берем этот кусок
-                phrase.add(text.substring(ctx.getStart(), ctx.getEnd() + 1));
-            }
-
         }
 
         return resultMap;
@@ -480,7 +477,7 @@ public class Searcher {
      * @throws IOException
      */
     public void findQuoteInText(final MongoDbWorker mdb, String queryWords, int sizeContext) throws IOException {
-        Map<String, List<String>> documentPhrase = new HashMap<>();
+        Map<String, Set<String>> documentPhrase = new HashMap<>();
         Map<String, List<String>> finalPhrases;
         WordSearcher ws = new WordSearcher();
         List<String> lines = new ArrayList<>(Arrays.asList(queryWords.split(System.getProperty("line.separator"))));
