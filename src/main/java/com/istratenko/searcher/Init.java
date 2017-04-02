@@ -52,7 +52,7 @@ public class Init {
                 return;
             } else {
                 if (!new File(pathToTextFile).exists()) {
-                    System.out.println("File for with path is not found. Che it in config file");
+                    System.out.println("File for with path is not found. Check it in config file");
                     return;
                 }
             }
