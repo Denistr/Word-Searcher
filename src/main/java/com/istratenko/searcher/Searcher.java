@@ -322,10 +322,10 @@ public class Searcher {
                         // Убедились что это отдельно стоящее слово или слово обрамленное цифрами
                         String foundword = p.substring(wStart, wEnd + 1);
                         if (isWordInQuery(words, foundword)) { //если это слово из запроса, то выделяем его жирным
-                            resultStr.append(p.substring(0, wStart));
-                            resultStr.append("<b>");
-                            resultStr.append(foundword);
-                            resultStr.append("</b>");
+                            resultStr.append(p.substring(0, wStart))
+                            .append("<b>")
+                            .append(foundword)
+                            .append("</b>");
                             bWasBolded = true;
                         }
                     }

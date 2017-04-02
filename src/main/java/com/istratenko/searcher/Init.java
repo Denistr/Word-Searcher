@@ -42,16 +42,45 @@ public class Init {
         input = new FileInputStream(pathToConfigProp); //path to config.properties
         configProp.load(input);
         String mode = configProp.getProperty("mode").toLowerCase();
+        String pathToTextFile = configProp.getProperty("pathToFile");
+        String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
+
+
+        if ((mode.equals("1") || mode.equalsIgnoreCase("tokenizer")) || mode.equals("2") || mode.equalsIgnoreCase("indexer")) {
+            if (pathToTextFile == null) {
+                System.out.println("Please, check properties file. Key pathToFile is not exists or its value is empty");
+                return;
+            } else {
+                if (!new File(pathToTextFile).exists()) {
+                    System.out.println("File for with path is not found. Che it in config file");
+                    return;
+                }
+            }
+        }
+
+        if ((mode.equals("2") || mode.equalsIgnoreCase("indexer")) ||
+                mode.equals("3") || mode.equalsIgnoreCase("WordSearcher") ||
+                mode.equals("4") || mode.equalsIgnoreCase("Searcher")) {
+
+            if (pathToMDBConf == null) {
+                System.out.println("Please, check properties file. Key pathToMongoDbConfig is not exists or its value is empty");
+                return;
+            } else {
+                boolean isMongoDbConfigFileExists = new File(pathToMDBConf).exists();
+                boolean isTextFileExists = new File(pathToTextFile).exists();
+
+                if (!isMongoDbConfigFileExists || !isTextFileExists) {
+                    System.out.println("Check paths to files in config file");
+                    return;
+                }
+            }
+
+        }
+
         List<String> lines;
 
         //первое задание
         if (mode.equals("1") || mode.equalsIgnoreCase("tokenizer")) {
-            String pathToTextFile = configProp.getProperty("pathToFile");
-            boolean isExistsFile = new File(pathToTextFile).exists();
-            if (!isExistsFile) {
-                System.out.println("File for with path is not found. Che it in config file");
-                return;
-            }
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
             s.printWordsFromText(pathToTextFile, lines);
@@ -59,24 +88,12 @@ public class Init {
 
         //второе задание
         if (mode.equals("2") || mode.equalsIgnoreCase("indexer")) {
-            String pathToTextFile = configProp.getProperty("pathToFile");
-            String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
-
-            boolean isMongoDbConfigFileExists = new File(pathToMDBConf).exists();
-            boolean isTextFileExists = new File(pathToTextFile).exists();
-
-            if (!isMongoDbConfigFileExists || !isTextFileExists) {
-                System.out.println("Check paths to files in config file");
-                return;
-            }
-
             mdb.initConnection(pathToMDBConf);
 
             if (!mdb.isAuthenticate()) {
                 System.out.println("Connection refused. Check mongodb config file");
                 return;
             }
-
 
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
@@ -88,14 +105,6 @@ public class Init {
 
         //третье задание
         if (mode.equals("3") || mode.equalsIgnoreCase("WordSearcher")) {
-            String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
-
-            boolean isMongoDbConfigFileExists = new File(pathToMDBConf).exists();
-
-            if (!isMongoDbConfigFileExists) {
-                System.out.println("Config file for mongodb is not found. Check it in config file");
-                return;
-            }
 
             mdb.initConnection(pathToMDBConf);
             if (!mdb.isAuthenticate()) {
@@ -128,8 +137,8 @@ public class Init {
 
         //четвертое задание
         if (mode.equals("4") || mode.equalsIgnoreCase("Searcher")) {
-            String pathToMDBConf = configProp.getProperty("pathToMongoDbConfig");
             mdb.initConnection(pathToMDBConf);
+
             if (!mdb.isAuthenticate()) {
                 System.out.println("Connection refused. Check mongodb config file");
                 return;
