@@ -65,7 +65,7 @@ public class MongoDbWorker {
             db = mongoClient.getDB(prop.getProperty("dbname"));
 
             // Входим под созданным логином и паролем
-            authenticate = db.authenticate(prop.getProperty("login"), prop.getProperty("password").toCharArray());
+            //authenticate = db.authenticate(prop.getProperty("login"), prop.getProperty("password").toCharArray());
 
             // Выбираем коллекцию/таблицу для дальнейшей работы
             table = db.getCollection(prop.getProperty("table"));
@@ -156,7 +156,7 @@ public class MongoDbWorker {
         return finalMap;
     }
 
-    public boolean isAuthenticate() {
+    /*public boolean isAuthenticate() {
         return authenticate;
-    }
+    }*/
 }

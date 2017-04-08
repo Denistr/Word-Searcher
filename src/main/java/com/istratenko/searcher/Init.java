@@ -74,7 +74,6 @@ public class Init {
                     return;
                 }
             }
-
         }
 
         List<String> lines;
@@ -90,10 +89,10 @@ public class Init {
         if (mode.equals("2") || mode.equalsIgnoreCase("indexer")) {
             mdb.initConnection(pathToMDBConf);
 
-            if (!mdb.isAuthenticate()) {
+            /*if (!mdb.isAuthenticate()) {
                 System.out.println("Connection refused. Check mongodb config file");
                 return;
-            }
+            }*/
 
             lines = Files.readAllLines(Paths.get(pathToTextFile), StandardCharsets.UTF_8); //get list of lines, which contains in Text Document
             WordSearcher s = new WordSearcher();
@@ -107,10 +106,10 @@ public class Init {
         if (mode.equals("3") || mode.equalsIgnoreCase("WordSearcher")) {
 
             mdb.initConnection(pathToMDBConf);
-            if (!mdb.isAuthenticate()) {
+            /*if (!mdb.isAuthenticate()) {
                 System.out.println("Connection refused. Check mongodb config file");
                 return;
-            }
+            }*/
 
             Searcher searcher = new Searcher();
             System.out.println("Enter your search query:");
@@ -139,10 +138,10 @@ public class Init {
         if (mode.equals("4") || mode.equalsIgnoreCase("Searcher")) {
             mdb.initConnection(pathToMDBConf);
 
-            if (!mdb.isAuthenticate()) {
+            /*if (!mdb.isAuthenticate()) {
                 System.out.println("Connection refused. Check mongodb config file");
                 return;
-            }
+            }*/
 
             Searcher searcher = new Searcher();
             System.out.println("Enter your search query:");
