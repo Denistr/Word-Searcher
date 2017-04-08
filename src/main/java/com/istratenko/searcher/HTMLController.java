@@ -22,7 +22,7 @@ public class HTMLController {
         Writer bw = null;
 
         try {
-            bw = new OutputStreamWriter(new FileOutputStream(f), "cp1251");
+            bw = new OutputStreamWriter(new FileOutputStream(f), "UTF-16");
             bw.write("<html>");
             bw.write("<body>");
             bw.write("<h2>Result:</h2>");
